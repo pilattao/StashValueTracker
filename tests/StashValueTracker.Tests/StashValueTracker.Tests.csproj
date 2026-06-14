@@ -11,6 +11,7 @@
          tasks. No project reference. -->
     <Compile Include="..\..\Model\Snapshot.cs" Link="Model\Snapshot.cs" />
     <Compile Include="..\..\Formatting\CurrencyFormat.cs" Link="Formatting\CurrencyFormat.cs" />
+    <Compile Include="..\..\Aggregation\StashAggregator.cs" Link="Aggregation\StashAggregator.cs" />
     <Compile Include="*.cs" />
   </ItemGroup>
 

@@ -16,6 +16,7 @@ public sealed class TabSnapshot
     public string Key { get; set; } = "";      // opaque identity from ResolveTabKey
     public string Name { get; set; } = "";
     public string Type { get; set; } = "";
+    public string? ParentName { get; set; }   // null for ordinary tabs; parent tab name for a sub-tab
     public DateTime LastScannedUtc { get; set; }
     public List<ItemSnapshot> Items { get; set; } = new();
 }

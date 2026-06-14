@@ -36,40 +36,75 @@ public sealed class StashScanner
 
     /// <summary>
     /// Opaque, stable-as-possible identity for the visible tab. Prefers the tab name (survives
-    /// reorder); falls back to the index. If a reliable per-tab id is confirmed in-game, prefer it here.
+    /// reorder); falls back to the index. For nested tabs, appends the active sub-tab index.
     /// </summary>
     public string ResolveTabKey(StashElement stash)
     {
-        // StashElement.Inventories is List<StashTabContainerInventory>; each entry has .TabName.
-        // AllStashNames and GetStashName are obsolete ("Just use Inventories").
         var idx = stash.IndexVisibleStash;
         var inventories = stash.Inventories;
         var name = inventories != null && idx >= 0 && idx < inventories.Count ? inventories[idx].TabName : null;
-        if (!string.IsNullOrWhiteSpace(name)) return "name:" + name;
-        return "idx:" + idx;
+        var baseKey = !string.IsNullOrWhiteSpace(name) ? "name:" + name : "idx:" + idx;
+
+        var vis = stash.VisibleStash;
+        if (vis is { IsNestedInventory: true })
+        {
+            var sub = vis.NestedVisibleInventoryIndex ?? -1;   // int? — null when no active sub-tab
+            if (sub >= 0) return $"{baseKey}/sub:{sub}";
+        }
+        return baseKey;
     }
 
-    /// <summary>Snapshot the currently visible tab. Returns null if nothing is scannable.</summary>
-    public TabSnapshot? ScanCurrentTab(DateTime nowUtc)
+    /// <summary>Snapshot the visible tab. Ordinary tab → one snapshot; nested tab → the active sub-tab
+    /// (always) plus any other readable sub-tabs.</summary>
+    public IReadOnlyList<TabSnapshot> ScanCurrentTab(DateTime nowUtc)
     {
         var stash = GetVisibleStash();
-        var inventory = stash?.VisibleStash;
-        var items = inventory?.VisibleInventoryItems;
-        if (stash == null || inventory == null || items == null) return null;
+        var visible = stash?.VisibleStash;
+        if (stash == null || visible == null) return Array.Empty<TabSnapshot>();
 
         var idx = stash.IndexVisibleStash;
         var inventories = stash.Inventories;
-        var tabName = inventories != null && idx >= 0 && idx < inventories.Count ? inventories[idx].TabName : null;
+        var rawName = inventories != null && idx >= 0 && idx < inventories.Count ? inventories[idx].TabName : null;
+        var baseKey = !string.IsNullOrWhiteSpace(rawName) ? "name:" + rawName : "idx:" + idx;
+        var parentName = !string.IsNullOrWhiteSpace(rawName) ? rawName : $"Tab {idx}";
+
+        if (visible.IsNestedInventory)
+        {
+            var result = new List<TabSnapshot>();
+            var subs = visible.SubInventories;
+            var active = visible.NestedVisibleInventoryIndex ?? -1;
+            if (subs != null)
+            {
+                for (var i = 0; i < subs.Count; i++)
+                {
+                    var items = subs[i]?.VisibleInventoryItems;
+                    var isActive = i == active;
+                    if (!isActive && (items == null || items.Count == 0)) continue;
+                    result.Add(BuildSnapshot(
+                        key: $"{baseKey}/sub:{i}",
+                        name: $"{parentName} / {i}",
+                        parentName: parentName,
+                        type: visible.InvType.ToString(),
+                        items: items,
+                        nowUtc: nowUtc));
+                }
+            }
+            return result;
+        }
+
+        return new[] { BuildSnapshot(baseKey, parentName, null, visible.InvType.ToString(), visible.VisibleInventoryItems, nowUtc) };
+    }
+
+    private TabSnapshot BuildSnapshot(string key, string name, string? parentName, string type,
+                                      System.Collections.Generic.IList<NormalInventoryItem>? items, DateTime nowUtc)
+    {
         var snapshot = new TabSnapshot
         {
-            Key = ResolveTabKey(stash),
-            Name = string.IsNullOrWhiteSpace(tabName) ? $"Tab {idx}" : tabName,
-            Type = inventory.InvType.ToString(),
-            LastScannedUtc = nowUtc,
-            Items = new List<ItemSnapshot>(),
+            Key = key, Name = name, ParentName = parentName, Type = type,
+            LastScannedUtc = nowUtc, Items = new List<ItemSnapshot>(),
         };
 
-        foreach (var slot in items)
+        foreach (var slot in items ?? System.Array.Empty<NormalInventoryItem>())
         {
             try
             {
@@ -91,10 +126,7 @@ public sealed class StashScanner
 
                 snapshot.Items.Add(new ItemSnapshot
                 {
-                    DisplayName = display,
-                    GroupKey = groupKey,
-                    StackSize = stackSize,
-                    TotalValueEx = totalEx,
+                    DisplayName = display, GroupKey = groupKey, StackSize = stackSize, TotalValueEx = totalEx,
                 });
             }
             catch (Exception ex)

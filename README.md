@@ -40,6 +40,33 @@ The design spec is maintained locally (not committed).
 6. Snapshots persist to disk per league (in the plugin's `data/` folder) and reload
    automatically on startup — totals are available before you re-open any tabs.
 
+### Hotkey
+
+- In the plugin settings, bind a **toggle hotkey** and press it in-game to open or close the
+  value window without going into settings.
+
+### Tabs with sub-tabs (e.g. Rune or Affinity stash)
+
+- Tabs that contain sub-tabs (e.g. Rune stash, Affinity stash) are tracked **per sub-tab**.
+  Open each sub-tab at least once so the plugin can scan it.
+- In the left-panel filter the sub-tabs appear **grouped under their parent tab**. The parent
+  entry shows the **combined value** of all its sub-tabs and a **(N sub-tabs)** hint.
+- The parent's **checkbox** toggles every sub-tab at once; **Forget** on the parent drops all
+  sub-tabs from memory.
+
+### Auto-refresh and re-scan interval
+
+- **"Auto-refresh open tab"** (on by default) re-scans the currently open tab on a timer.
+  Turn it off to scan only when you switch tabs (useful if you want no background activity).
+- **"Re-scan interval"** controls the refresh cadence; lower the value for faster updates or
+  raise it to reduce overhead.
+
+### Summary table layout
+
+- The summary table columns can be **resized**, **reordered**, and **hidden** by right-clicking
+  a column header, and **sorted** by clicking a header. Numeric value columns are right-aligned.
+  The layout (column order, widths, visibility, sort) persists across sessions.
+
 ## Building
 
 Targets `net8.0-windows`; runs in-game on Windows. It can be compile-checked on Linux/CI
@@ -59,3 +86,10 @@ with `EnableWindowsTargeting` and the ExileCore2 reference DLLs supplied via the
 - [ ] Disable NinjaPricer → "not loaded" banner; no scanning.
 - [ ] Switch league → window reflects the new league's separate snapshots; the old league's file is unchanged.
 - [ ] Reorder tabs (if applicable) → confirm whether identity holds (name-based key); note any drift for the stable-id follow-up.
+- [ ] Bind the toggle-window hotkey in settings; press it in-game → the window opens/closes.
+- [ ] Open a nested stash (e.g. rune/affinity) and visit each sub-tab → each sub-tab is scanned; the filter shows them grouped under the parent with the parent's combined value and "(N sub-tabs)"; the parent checkbox toggles all sub-tabs and "Forget" on the parent drops them all.
+- [ ] Switching sub-tabs does not overwrite other sub-tabs' values.
+- [ ] Empty an active sub-tab and re-open/re-scan it → its stored value drops to 0 (not stuck at the old total); the parent's combined value decreases.
+- [ ] Sub-tab entries are stable/distinct with no duplicates and no ghost "/ -1" row.
+- [ ] Turn off "Auto-refresh open tab" → the open tab no longer re-scans on a timer; switching tabs still scans. Turn it on and change "Re-scan interval" → the open tab refreshes at the new cadence.
+- [ ] In the summary table, resize/reorder/hide columns and click headers to sort; numeric columns are right-aligned and the layout persists across sessions.

@@ -10,7 +10,6 @@ namespace StashValueTracker;
 
 public class StashValueTracker : BaseSettingsPlugin<Settings>
 {
-    private const long RescanIntervalMs = 2500;   // re-scan the still-open tab this often
     private const long SaveIntervalMs = 5000;     // debounce disk writes
 
     private NinjaPricerBridge _bridge = null!;
@@ -36,6 +35,8 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
         _scanner = new StashScanner(GameController, _bridge, msg => LogError($"[scan] {msg}"));
         _store = new SnapshotStore(Path.Combine(DirectoryFullName, "data"), msg => LogError($"[store] {msg}"));
         _window = new ValueWindow();
+        Input.RegisterKey(Settings.ToggleWindowHotkey.Value);
+        Settings.ToggleWindowHotkey.OnValueChanged += () => Input.RegisterKey(Settings.ToggleWindowHotkey.Value);
         // League may be empty at startup; the store is loaded lazily on the first tick with a known league.
         return true;
     }
@@ -43,6 +44,9 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
     public override void Tick()
     {
         if (!Settings.Enable) return;
+
+        if (Settings.ToggleWindowHotkey.PressedOnce())
+            Settings.ShowWindow.Value = !Settings.ShowWindow.Value;
 
         var league = ResolveLeague();
         if (string.IsNullOrEmpty(league)) return;   // not in-game yet — don't load or scan
@@ -79,23 +83,25 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
         }
 
         if (nowMs - _pendingSinceMs < Settings.ScanDebounceMs.Value) return;
-        if (!_bridge.PricesReady) return;
+        if (!_bridge.IsAvailable || !_bridge.PricesReady) return;
 
         var itemCount = _scanner.CurrentItemCount(stash);
         var neverScanned = _lastScanMs == 0;
-        var countChanged = itemCount != _lastItemCount;
-        var periodic = nowMs - _lastScanMs >= RescanIntervalMs;
+        var autoRefresh = Settings.AutoRefreshOpenTab.Value;
+        var countChanged = autoRefresh && itemCount != _lastItemCount;
+        var periodic = autoRefresh && nowMs - _lastScanMs >= Settings.RescanIntervalMs.Value;
 
         if (neverScanned || countChanged || periodic)
         {
-            var snapshot = _scanner.ScanCurrentTab(DateTime.UtcNow);
-            if (snapshot != null)
+            var snapshots = _scanner.ScanCurrentTab(DateTime.UtcNow);
+            if (snapshots.Count > 0)
             {
-                _store.UpsertTab(snapshot);
+                foreach (var snapshot in snapshots)
+                    _store.UpsertTab(snapshot);
                 _dirty = true;
-                _lastItemCount = itemCount;
             }
-            _lastScanMs = nowMs;   // back off even if the scan produced nothing this frame
+            _lastScanMs = nowMs;
+            _lastItemCount = itemCount;   // unconditional: avoids re-trigger when the scan yielded nothing
         }
 
         MaybeFlush(nowMs);

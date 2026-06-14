@@ -31,9 +31,28 @@ public sealed class StashScanner
         return stash is { IsVisible: true } ? stash : null;
     }
 
-    /// <summary>Number of items currently visible in the open tab (for change detection). 0 if none.</summary>
-    public int CurrentItemCount(StashElement stash) =>
-        stash?.VisibleStash?.VisibleInventoryItems?.Count ?? 0;
+    /// <summary>Total item count in the open tab (for change detection): sub-inventory contents when
+    /// present, else the flat list. 0 if none.</summary>
+    public int CurrentItemCount(StashElement stash)
+    {
+        var vis = stash?.VisibleStash;
+        if (vis == null) return 0;
+
+        var subs = vis.SubInventories;
+        if (subs != null && subs.Count > 0)
+        {
+            var sum = 0;
+            var any = false;
+            for (var i = 0; i < subs.Count; i++)
+            {
+                var c = subs[i]?.VisibleInventoryItems?.Count ?? 0;
+                if (c > 0) { sum += c; any = true; }
+            }
+            if (any) return sum;
+        }
+
+        return vis.VisibleInventoryItems?.Count ?? 0;
+    }
 
     /// <summary>Diagnostic dump of the visible stash's nesting structure (for fixing sub-tab support).</summary>
     public string DescribeVisibleStash(StashElement stash)
@@ -63,28 +82,18 @@ public sealed class StashScanner
         }
     }
 
-    /// <summary>
-    /// Opaque, stable-as-possible identity for the visible tab. Prefers the tab name (survives
-    /// reorder); falls back to the index. For nested tabs, appends the active sub-tab index.
-    /// </summary>
+    /// <summary>Opaque tab identity: the tab name (survives reorder), falling back to the index.</summary>
     public string ResolveTabKey(StashElement stash)
     {
         var idx = stash.IndexVisibleStash;
         var inventories = stash.Inventories;
         var name = inventories != null && idx >= 0 && idx < inventories.Count ? inventories[idx].TabName : null;
-        var baseKey = !string.IsNullOrWhiteSpace(name) ? "name:" + name : "idx:" + idx;
-
-        var vis = stash.VisibleStash;
-        if (vis is { IsNestedInventory: true })
-        {
-            var sub = vis.NestedVisibleInventoryIndex ?? -1;   // int? — null when no active sub-tab
-            if (sub >= 0) return $"{baseKey}/sub:{sub}";
-        }
-        return baseKey;
+        return !string.IsNullOrWhiteSpace(name) ? "name:" + name : "idx:" + idx;
     }
 
-    /// <summary>Snapshot the visible tab. Ordinary tab → one snapshot; nested tab → the active sub-tab
-    /// (always) plus any other readable sub-tabs.</summary>
+    /// <summary>Snapshot the visible tab as a single entry. Special "grid" stashes (currency, runes,
+    /// essence, …) expose their contents through SubInventories — flatten those; otherwise use the
+    /// flat VisibleInventoryItems.</summary>
     public IReadOnlyList<TabSnapshot> ScanCurrentTab(DateTime nowUtc)
     {
         var stash = GetVisibleStash();
@@ -94,34 +103,38 @@ public sealed class StashScanner
         var idx = stash.IndexVisibleStash;
         var inventories = stash.Inventories;
         var rawName = inventories != null && idx >= 0 && idx < inventories.Count ? inventories[idx].TabName : null;
-        var baseKey = !string.IsNullOrWhiteSpace(rawName) ? "name:" + rawName : "idx:" + idx;
-        var parentName = !string.IsNullOrWhiteSpace(rawName) ? rawName : $"Tab {idx}";
+        var key = !string.IsNullOrWhiteSpace(rawName) ? "name:" + rawName : "idx:" + idx;
+        var name = !string.IsNullOrWhiteSpace(rawName) ? rawName : $"Tab {idx}";
 
-        if (visible.IsNestedInventory)
+        var items = CollectItems(visible);
+        return new[] { BuildSnapshot(key, name, null, visible.InvType.ToString(), items, nowUtc) };
+    }
+
+    /// <summary>All items in the visible stash: sub-inventory contents when present (covers grid
+    /// stashes whose flat VisibleInventoryItems is empty), else the flat list.</summary>
+    private static List<NormalInventoryItem> CollectItems(Inventory visible)
+    {
+        var result = new List<NormalInventoryItem>();
+
+        var subs = visible.SubInventories;
+        if (subs != null && subs.Count > 0)
         {
-            var result = new List<TabSnapshot>();
-            var subs = visible.SubInventories;
-            var active = visible.NestedVisibleInventoryIndex ?? -1;
-            if (subs != null)
+            var any = false;
+            for (var i = 0; i < subs.Count; i++)
             {
-                for (var i = 0; i < subs.Count; i++)
+                var subItems = subs[i]?.VisibleInventoryItems;
+                if (subItems != null && subItems.Count > 0)
                 {
-                    var items = subs[i]?.VisibleInventoryItems;
-                    var isActive = i == active;
-                    if (!isActive && (items == null || items.Count == 0)) continue;
-                    result.Add(BuildSnapshot(
-                        key: $"{baseKey}/sub:{i}",
-                        name: $"{parentName} / {i}",
-                        parentName: parentName,
-                        type: visible.InvType.ToString(),
-                        items: items,
-                        nowUtc: nowUtc));
+                    result.AddRange(subItems);
+                    any = true;
                 }
             }
-            return result;
+            if (any) return result;   // grid stash — items live in the sub-inventories
         }
 
-        return new[] { BuildSnapshot(baseKey, parentName, null, visible.InvType.ToString(), visible.VisibleInventoryItems, nowUtc) };
+        var flat = visible.VisibleInventoryItems;
+        if (flat != null) result.AddRange(flat);
+        return result;
     }
 
     private TabSnapshot BuildSnapshot(string key, string name, string? parentName, string type,

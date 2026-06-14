@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ExileCore2;
 using ExileCore2.PoEMemory.Components;
 using ExileCore2.PoEMemory.Elements;
@@ -33,6 +34,34 @@ public sealed class StashScanner
     /// <summary>Number of items currently visible in the open tab (for change detection). 0 if none.</summary>
     public int CurrentItemCount(StashElement stash) =>
         stash?.VisibleStash?.VisibleInventoryItems?.Count ?? 0;
+
+    /// <summary>Diagnostic dump of the visible stash's nesting structure (for fixing sub-tab support).</summary>
+    public string DescribeVisibleStash(StashElement stash)
+    {
+        try
+        {
+            var idx = stash.IndexVisibleStash;
+            var inv = stash.Inventories;
+            var tabName = inv != null && idx >= 0 && idx < inv.Count ? inv[idx].TabName : "<n/a>";
+            var vis = stash.VisibleStash;
+            if (vis == null) return $"idx={idx} name='{tabName}' VisibleStash=null Inventories={inv?.Count.ToString() ?? "null"}";
+
+            var subs = vis.SubInventories;
+            var subCounts = subs == null
+                ? "null"
+                : "[" + string.Join(",", System.Linq.Enumerable.Range(0, subs.Count)
+                    .Select(i => subs[i]?.VisibleInventoryItems?.Count.ToString() ?? "null")) + "]";
+
+            return $"idx={idx} name='{tabName}' InvType={vis.InvType} IsNested={vis.IsNestedInventory} " +
+                   $"NestedVisibleIdx={(vis.NestedVisibleInventoryIndex.HasValue ? vis.NestedVisibleInventoryIndex.Value.ToString() : "null")} " +
+                   $"VisItems={vis.VisibleInventoryItems?.Count.ToString() ?? "null"} " +
+                   $"SubInventories={subs?.Count.ToString() ?? "null"} subItemCounts={subCounts}";
+        }
+        catch (Exception ex)
+        {
+            return $"DescribeVisibleStash error: {ex.Message}";
+        }
+    }
 
     /// <summary>
     /// Opaque, stable-as-possible identity for the visible tab. Prefers the tab name (survives

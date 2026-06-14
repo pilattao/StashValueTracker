@@ -36,6 +36,8 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
         _scanner = new StashScanner(GameController, _bridge, msg => LogError($"[scan] {msg}"));
         _store = new SnapshotStore(Path.Combine(DirectoryFullName, "data"), msg => LogError($"[store] {msg}"));
         _window = new ValueWindow();
+        Input.RegisterKey(Settings.ToggleWindowHotkey.Value);
+        Settings.ToggleWindowHotkey.OnValueChanged += () => Input.RegisterKey(Settings.ToggleWindowHotkey.Value);
         // League may be empty at startup; the store is loaded lazily on the first tick with a known league.
         return true;
     }
@@ -43,6 +45,9 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
     public override void Tick()
     {
         if (!Settings.Enable) return;
+
+        if (Settings.ToggleWindowHotkey.PressedOnce())
+            Settings.ShowWindow.Value = !Settings.ShowWindow.Value;
 
         var league = ResolveLeague();
         if (string.IsNullOrEmpty(league)) return;   // not in-game yet — don't load or scan

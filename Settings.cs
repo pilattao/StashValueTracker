@@ -21,9 +21,6 @@ public class Settings : ISettings
     [Menu("Toggle window hotkey", "Press to open/close the value window. Bind it here.")]
     public HotkeyNodeV2 ToggleWindowHotkey { get; set; } = new HotkeyNodeV2(Keys.None);
 
-    [Menu("Auto-refresh open tab", "ON: re-scan the open tab periodically and when its item count changes. OFF: scan only on tab/sub-tab change.")]
-    public ToggleNode AutoRefreshOpenTab { get; set; } = new(true);
-
-    [Menu("Re-scan interval (ms)", "How often the open tab re-scans while auto-refresh is on.")]
-    public RangeNode<int> RescanIntervalMs { get; set; } = new(2500, 500, 10000);
+    [Menu("Debug logging", "Log nested-stash structure on tab change (for diagnosing sub-tabs).")]
+    public ToggleNode DebugLogging { get; set; } = new(false);
 }

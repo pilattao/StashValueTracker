@@ -81,6 +81,8 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
             _pendingSinceMs = nowMs;
             _lastScanMs = 0;
             _lastItemCount = -1;
+            if (Settings.DebugLogging)
+                LogMessage($"[nested-debug] {_scanner.DescribeVisibleStash(stash)}");
             return;
         }
 
@@ -88,12 +90,10 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
         if (!_bridge.IsAvailable || !_bridge.PricesReady) return;
 
         var itemCount = _scanner.CurrentItemCount(stash);
-        var neverScanned = _lastScanMs == 0;
-        var autoRefresh = Settings.AutoRefreshOpenTab.Value;
-        var countChanged = autoRefresh && itemCount != _lastItemCount;
-        var periodic = autoRefresh && nowMs - _lastScanMs >= Settings.RescanIntervalMs.Value;
+        var neverScanned = _lastScanMs == 0;          // first scan after a tab/sub-tab change
+        var countChanged = itemCount != _lastItemCount;
 
-        if (neverScanned || countChanged || periodic)
+        if (neverScanned || countChanged)
         {
             var snapshots = _scanner.ScanCurrentTab(DateTime.UtcNow);
             if (snapshots.Count > 0)

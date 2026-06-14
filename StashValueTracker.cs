@@ -64,12 +64,18 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
         var stash = _scanner.GetVisibleStash();
         if (stash == null)
         {
-            if (_stashWasOpen) { FlushIfDirty(); _stashWasOpen = false; }
+            if (_stashWasOpen)
+            {
+                FlushIfDirty();
+                if (Settings.OpenCloseWithStash.Value)
+                    Settings.ShowWindow.Value = false;   // fire once on the stash-close transition
+                _stashWasOpen = false;
+            }
             _pendingTabKey = null;
             return;
         }
-        if (!_stashWasOpen && Settings.AutoOpenWithStash.Value)
-            Settings.ShowWindow.Value = true;   // fire once on the stash-open transition
+        if (!_stashWasOpen && Settings.OpenCloseWithStash.Value)
+            Settings.ShowWindow.Value = true;            // fire once on the stash-open transition
         _stashWasOpen = true;
 
         var key = _scanner.ResolveTabKey(stash);

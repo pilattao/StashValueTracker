@@ -10,7 +10,6 @@ namespace StashValueTracker;
 
 public class StashValueTracker : BaseSettingsPlugin<Settings>
 {
-    private const long RescanIntervalMs = 2500;   // re-scan the still-open tab this often
     private const long SaveIntervalMs = 5000;     // debounce disk writes
 
     private NinjaPricerBridge _bridge = null!;
@@ -88,19 +87,21 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
 
         var itemCount = _scanner.CurrentItemCount(stash);
         var neverScanned = _lastScanMs == 0;
-        var countChanged = itemCount != _lastItemCount;
-        var periodic = nowMs - _lastScanMs >= RescanIntervalMs;
+        var autoRefresh = Settings.AutoRefreshOpenTab.Value;
+        var countChanged = autoRefresh && itemCount != _lastItemCount;
+        var periodic = autoRefresh && nowMs - _lastScanMs >= Settings.RescanIntervalMs.Value;
 
         if (neverScanned || countChanged || periodic)
         {
-            var snapshot = _scanner.ScanCurrentTab(DateTime.UtcNow);
-            if (snapshot != null)
+            var snapshots = _scanner.ScanCurrentTab(DateTime.UtcNow);
+            if (snapshots.Count > 0)
             {
-                _store.UpsertTab(snapshot);
+                foreach (var snapshot in snapshots)
+                    _store.UpsertTab(snapshot);
                 _dirty = true;
                 _lastItemCount = itemCount;
             }
-            _lastScanMs = nowMs;   // back off even if the scan produced nothing this frame
+            _lastScanMs = nowMs;
         }
 
         MaybeFlush(nowMs);

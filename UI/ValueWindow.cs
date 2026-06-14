@@ -50,36 +50,85 @@ public sealed class ValueWindow
 
     private void DrawTabFilterPanel(SnapshotStore store, IReadOnlyList<TabSnapshot> tabs, double divinePerExalted, Action requestSave)
     {
-        ImGui.BeginChild("tabs", new System.Numerics.Vector2(220, 0), ImGuiChildFlags.Border);
+        ImGui.BeginChild("tabs", new System.Numerics.Vector2(240, 0), ImGuiChildFlags.Border);
         ImGui.TextDisabled("Tabs");
         ImGui.Separator();
 
-        foreach (var tab in tabs.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList())
+        foreach (var node in TabTree.Build(tabs))
         {
-            ImGui.PushID(tab.Key);
-
-            var included = !_excluded.Contains(tab.Key);
-            if (ImGui.Checkbox($"{tab.Name}##sel", ref included))
-            {
-                if (included) _excluded.Remove(tab.Key);
-                else _excluded.Add(tab.Key);
-            }
-
-            var tabTotal = tab.Items.Where(i => i.TotalValueEx > 0).Sum(i => i.TotalValueEx);
-            ImGui.TextDisabled($"  {CurrencyFormat.ExWithDiv(tabTotal, divinePerExalted)} · {Ago(tab.LastScannedUtc)}");
-
-            ImGui.SameLine();
-            if (ImGui.SmallButton("Forget"))
-            {
-                store.ForgetTab(tab.Key);
-                _excluded.Remove(tab.Key);
-                requestSave();
-            }
-
-            ImGui.PopID();
+            if (node.IsGroup)
+                DrawGroupNode(store, node, divinePerExalted, requestSave);
+            else
+                DrawTabRow(store, node.Tabs[0], divinePerExalted, requestSave, indent: false);
         }
 
         ImGui.EndChild();
+    }
+
+    private void DrawGroupNode(SnapshotStore store, TabNode node, double divinePerExalted, Action requestSave)
+    {
+        ImGui.PushID("grp:" + node.Label);
+
+        var allIncluded = node.Tabs.All(t => !_excluded.Contains(t.Key));
+        var parentChecked = allIncluded;
+        if (ImGui.Checkbox("##grpsel", ref parentChecked))
+        {
+            foreach (var t in node.Tabs)
+            {
+                if (parentChecked) _excluded.Remove(t.Key);
+                else _excluded.Add(t.Key);
+            }
+        }
+        ImGui.SameLine();
+
+        var open = ImGui.TreeNodeEx($"{node.Label} ({node.Tabs.Count} sub-tabs)##grp");
+        ImGui.SameLine();
+        ImGui.TextDisabled($"  {CurrencyFormat.ExWithDiv(node.TotalEx, divinePerExalted)}");
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Forget##grp"))
+        {
+            foreach (var t in node.Tabs)
+            {
+                store.ForgetTab(t.Key);
+                _excluded.Remove(t.Key);
+            }
+            requestSave();
+        }
+        if (open)
+        {
+            foreach (var t in node.Tabs)
+                DrawTabRow(store, t, divinePerExalted, requestSave, indent: true);
+            ImGui.TreePop();
+        }
+
+        ImGui.PopID();
+    }
+
+    private void DrawTabRow(SnapshotStore store, TabSnapshot tab, double divinePerExalted, Action requestSave, bool indent)
+    {
+        ImGui.PushID(tab.Key);
+        if (indent) ImGui.Indent();
+
+        var included = !_excluded.Contains(tab.Key);
+        if (ImGui.Checkbox($"{tab.Name}##sel", ref included))
+        {
+            if (included) _excluded.Remove(tab.Key);
+            else _excluded.Add(tab.Key);
+        }
+
+        var tabTotal = tab.Items.Where(i => i.TotalValueEx > 0).Sum(i => i.TotalValueEx);
+        ImGui.TextDisabled($"  {CurrencyFormat.ExWithDiv(tabTotal, divinePerExalted)} · {Ago(tab.LastScannedUtc)}");
+
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Forget"))
+        {
+            store.ForgetTab(tab.Key);
+            _excluded.Remove(tab.Key);
+            requestSave();
+        }
+
+        if (indent) ImGui.Unindent();
+        ImGui.PopID();
     }
 
     private static void DrawSummaryTable(AggregationResult result, double divinePerExalted)

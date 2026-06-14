@@ -13,6 +13,7 @@ namespace StashValueTracker.UI;
 public sealed class ValueWindow
 {
     private readonly HashSet<string> _excluded = new();   // opt-out: everything not here is included
+    private float _leftPanelWidth = 240f;                  // draggable via the vertical splitter
 
     /// <summary>Clears the tab-exclusion filter (call on league change so a new league starts fresh).</summary>
     public void ResetExclusions() => _excluded.Clear();
@@ -44,6 +45,8 @@ public sealed class ValueWindow
 
             DrawTabFilterPanel(store, tabs, divinePerExalted, requestSave);
             ImGui.SameLine();
+            DrawSplitter();
+            ImGui.SameLine();
             DrawSummaryTable(result, divinePerExalted);
 
             ImGui.End();
@@ -54,9 +57,27 @@ public sealed class ValueWindow
         }
     }
 
+    // A thin draggable bar between the tab panel and the summary table; adjusts _leftPanelWidth.
+    private void DrawSplitter()
+    {
+        const float thickness = 6f;
+        var height = ImGui.GetContentRegionAvail().Y;
+
+        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(1, 1, 1, 0.06f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1, 1, 1, 0.18f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.40f, 0.70f, 0.95f, 0.5f));
+        ImGui.Button("##vsplit", new Vector2(thickness, height));
+        ImGui.PopStyleColor(3);
+
+        if (ImGui.IsItemHovered() || ImGui.IsItemActive())
+            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
+        if (ImGui.IsItemActive())
+            _leftPanelWidth = Math.Clamp(_leftPanelWidth + ImGui.GetIO().MouseDelta.X, 140f, 600f);
+    }
+
     private void DrawTabFilterPanel(SnapshotStore store, IReadOnlyList<TabSnapshot> tabs, double divinePerExalted, Action requestSave)
     {
-        ImGui.BeginChild("tabs", new Vector2(240, 0), ImGuiChildFlags.Border);
+        ImGui.BeginChild("tabs", new Vector2(_leftPanelWidth, 0), ImGuiChildFlags.Border);
         ImGui.TextDisabled("Tabs");
         ImGui.Separator();
 

@@ -12,7 +12,6 @@
     <Compile Include="..\..\Model\Snapshot.cs" Link="Model\Snapshot.cs" />
     <Compile Include="..\..\Formatting\CurrencyFormat.cs" Link="Formatting\CurrencyFormat.cs" />
     <Compile Include="..\..\Aggregation\StashAggregator.cs" Link="Aggregation\StashAggregator.cs" />
-    <Compile Include="..\..\Aggregation\TabTree.cs" Link="Aggregation\TabTree.cs" />
     <Compile Include="..\..\Storage\SnapshotStore.cs" Link="Storage\SnapshotStore.cs" />
     <Compile Include="*.cs" />
   </ItemGroup>

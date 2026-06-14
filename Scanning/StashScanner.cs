@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using ExileCore2;
 using ExileCore2.PoEMemory.Components;
 using ExileCore2.PoEMemory.Elements;
@@ -54,34 +53,6 @@ public sealed class StashScanner
         return vis.VisibleInventoryItems?.Count ?? 0;
     }
 
-    /// <summary>Diagnostic dump of the visible stash's nesting structure (for fixing sub-tab support).</summary>
-    public string DescribeVisibleStash(StashElement stash)
-    {
-        try
-        {
-            var idx = stash.IndexVisibleStash;
-            var inv = stash.Inventories;
-            var tabName = inv != null && idx >= 0 && idx < inv.Count ? inv[idx].TabName : "<n/a>";
-            var vis = stash.VisibleStash;
-            if (vis == null) return $"idx={idx} name='{tabName}' VisibleStash=null Inventories={inv?.Count.ToString() ?? "null"}";
-
-            var subs = vis.SubInventories;
-            var subCounts = subs == null
-                ? "null"
-                : "[" + string.Join(",", System.Linq.Enumerable.Range(0, subs.Count)
-                    .Select(i => subs[i]?.VisibleInventoryItems?.Count.ToString() ?? "null")) + "]";
-
-            return $"idx={idx} name='{tabName}' InvType={vis.InvType} IsNested={vis.IsNestedInventory} " +
-                   $"NestedVisibleIdx={(vis.NestedVisibleInventoryIndex.HasValue ? vis.NestedVisibleInventoryIndex.Value.ToString() : "null")} " +
-                   $"VisItems={vis.VisibleInventoryItems?.Count.ToString() ?? "null"} " +
-                   $"SubInventories={subs?.Count.ToString() ?? "null"} subItemCounts={subCounts}";
-        }
-        catch (Exception ex)
-        {
-            return $"DescribeVisibleStash error: {ex.Message}";
-        }
-    }
-
     /// <summary>Opaque tab identity: the tab name (survives reorder), falling back to the index.</summary>
     public string ResolveTabKey(StashElement stash)
     {
@@ -107,7 +78,7 @@ public sealed class StashScanner
         var name = !string.IsNullOrWhiteSpace(rawName) ? rawName : $"Tab {idx}";
 
         var items = CollectItems(visible);
-        return new[] { BuildSnapshot(key, name, null, visible.InvType.ToString(), items, nowUtc) };
+        return new[] { BuildSnapshot(key, name, visible.InvType.ToString(), items, nowUtc) };
     }
 
     /// <summary>All items in the visible stash: sub-inventory contents when present (covers grid
@@ -137,12 +108,12 @@ public sealed class StashScanner
         return result;
     }
 
-    private TabSnapshot BuildSnapshot(string key, string name, string? parentName, string type,
+    private TabSnapshot BuildSnapshot(string key, string name, string type,
                                       System.Collections.Generic.IList<NormalInventoryItem>? items, DateTime nowUtc)
     {
         var snapshot = new TabSnapshot
         {
-            Key = key, Name = name, ParentName = parentName, Type = type,
+            Key = key, Name = name, Type = type,
             LastScannedUtc = nowUtc, Items = new List<ItemSnapshot>(),
         };
 

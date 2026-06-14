@@ -22,9 +22,6 @@ public class Settings : ISettings
     [Menu("Toggle window hotkey", "Press to open/close the value window. Bind it here.")]
     public HotkeyNodeV2 ToggleWindowHotkey { get; set; } = new HotkeyNodeV2(Keys.None);
 
-    [Menu("Debug logging", "Log nested-stash structure on tab change (for diagnosing sub-tabs).")]
-    public ToggleNode DebugLogging { get; set; } = new(false);
-
     // Persisted width of the tab panel (the draggable vertical splitter). No [Menu] — hidden but saved.
     public RangeNode<float> TabPanelWidth { get; set; } = new(240f, 120f, 800f);
 

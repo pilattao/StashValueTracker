@@ -93,56 +93,15 @@ public sealed class ValueWindow
         ImGui.TextDisabled("Tabs");
         ImGui.Separator();
 
-        foreach (var node in TabTree.Build(tabs))
-        {
-            if (node.IsGroup)
-                DrawGroupNode(store, node, divinePerExalted, requestSave);
-            else
-                DrawTabRow(store, node.Tabs[0], divinePerExalted, requestSave, indent: false);
-        }
+        foreach (var tab in tabs.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
+            DrawTabRow(store, tab, divinePerExalted, requestSave);
 
         ImGui.EndChild();
     }
 
-    private void DrawGroupNode(SnapshotStore store, TabNode node, double divinePerExalted, Action requestSave)
-    {
-        ImGui.PushID("grp:" + node.Label);
-
-        var allIncluded = node.Tabs.All(t => !_excluded.Contains(t.Key));
-        var parentChecked = allIncluded;
-        if (ImGui.Checkbox("##grpsel", ref parentChecked))
-        {
-            foreach (var t in node.Tabs)
-                SetExcluded(t.Key, !parentChecked);
-        }
-        ImGui.SameLine();
-
-        var open = ImGui.TreeNodeEx($"{node.Label} ({node.Tabs.Count} sub-tabs)##grp");
-        ImGui.SameLine();
-        ImGui.TextDisabled($"  {CurrencyFormat.ExWithDiv(node.TotalEx, divinePerExalted)}");
-        if (RightSmallButton("Forget##grp"))
-        {
-            foreach (var t in node.Tabs)
-            {
-                store.ForgetTab(t.Key);
-                SetExcluded(t.Key, false);
-            }
-            requestSave();
-        }
-        if (open)
-        {
-            foreach (var t in node.Tabs)
-                DrawTabRow(store, t, divinePerExalted, requestSave, indent: true);
-            ImGui.TreePop();
-        }
-
-        ImGui.PopID();
-    }
-
-    private void DrawTabRow(SnapshotStore store, TabSnapshot tab, double divinePerExalted, Action requestSave, bool indent)
+    private void DrawTabRow(SnapshotStore store, TabSnapshot tab, double divinePerExalted, Action requestSave)
     {
         ImGui.PushID(tab.Key);
-        if (indent) ImGui.Indent();
 
         var included = !_excluded.Contains(tab.Key);
         if (ImGui.Checkbox($"{tab.Name}##sel", ref included))
@@ -158,7 +117,6 @@ public sealed class ValueWindow
             requestSave();
         }
 
-        if (indent) ImGui.Unindent();
         ImGui.PopID();
     }
 

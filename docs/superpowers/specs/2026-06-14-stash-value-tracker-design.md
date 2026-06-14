@@ -31,7 +31,11 @@ tabs, as a summary list by item, with filters for which tabs to include.
 4. **Main view: aggregated item list.** Identical items across tabs sum into one row
    (name, source tab(s), total quantity, unit price, total). Sortable; default sort by total.
 5. **Currency: exalted, with `(~Y div)` shown on every value** (not only large ones).
-   Bridge returns exalted-equivalent; divine rate is derived by pricing a Divine Orb.
+   The bridge returns a raw chaos-equivalent number. Following RitualHelper's proven
+   approach, normalize to exalted by dividing by the raw value of an **Exalted Orb**
+   (`GetBaseItemTypeValue`), and derive the divine display ratio from a **Divine Orb**:
+   `exalted(item) = raw(item) / raw(ExaltedOrb)`,
+   `divinePerExalted = raw(ExaltedOrb) / raw(DivineOrb)`.
 6. **Unpriced items (value 0) are hidden** from the list and excluded from totals; a
    footer shows the count of unpriced items so coverage is visible.
 7. **Tab column merges across tabs:** one row per item; the "Tab" column shows the single
@@ -63,24 +67,31 @@ store it keyed by tab, and write the per-league JSON (debounced write). The aggr
 runs independently: it reads the store and renders the summary; data collection happens
 regardless of whether the window is open.
 
-**Units / conversion.** `NinjaPrice.GetValue` returns exalted-equivalent. The divine rate is
-obtained by pricing a Divine Orb base type via `GetBaseItemTypeValue` (its exalted value =
-exalted per divine). That same probe doubles as the **prices-ready check**: if it returns 0,
-price data is not loaded yet → defer scanning and show "waiting for price data" in the window.
+**Units / conversion.** The bridge returns a raw chaos-equivalent number. Normalize to
+exalted by dividing by the raw value of an Exalted Orb base type (`GetBaseItemTypeValue`):
+`exalted(item) = raw(item) / raw(ExaltedOrb)`. The divine display ratio is
+`divinePerExalted = raw(ExaltedOrb) / raw(DivineOrb)`. The Exalted-Orb probe doubles as the
+**prices-ready check**: if `raw(ExaltedOrb)` is 0, price data is not loaded yet → defer
+scanning and show "waiting for price data" in the window. Both base-orb raw values are cached
+with a short expiry (5 min), matching RitualHelper.
 
 ### Data model (persisted JSON, one file per league)
 
 ```
 StashSnapshot   { League: string, Tabs: List<TabSnapshot> }
-TabSnapshot     { Key: string, Index: int, Name: string, Type: string,
+TabSnapshot     { Key: int, Name: string, Type: string,
                   LastScannedUtc: DateTime, Items: List<ItemSnapshot> }
 ItemSnapshot    { DisplayName: string, GroupKey: string, StackSize: int,
                   UnitValueEx: double, Rarity: string?, Category: string? }
 ```
 
-- `Key` — the most stable tab identifier available (prefer an internal id; fall back to
-  `Name`+`Index`, reconciled on re-scan). **Open verification point for the plan:** confirm a
-  stable per-tab id is actually readable; if not, define the Name+Index reconciliation rules.
+- `Key` — **v1: the tab index** (`VisibleStashIndex`), which is always readable and survives
+  renames. `Name`/`Type` are stored for display and refreshed on every re-scan. Scope: the
+  normal player `StashElement` only (guild stash deferred, to avoid index collisions).
+  Limitation: reordering or inserting/removing tabs can shift indices; the next time a tab is
+  opened it is re-scanned and overwritten, which self-heals the common cases.
+- **Possible later enhancement:** if a stable per-tab id is confirmed readable from
+  `ExileCore2.dll` (`StashInventoryId`), switch `Key` to it for reorder-proof identity.
 - `UnitValueEx` is the per-one exalted value at scan time; a row's total = `UnitValueEx × StackSize`.
 - `GroupKey` is the aggregation key: unique name for uniques, base item name for stackables.
 - Snapshots are league-scoped; on league change the plugin loads that league's file.
@@ -108,7 +119,7 @@ ExileCore-free files (Model / Storage / Aggregation / Formatting) are isolated s
 `net8.0-windows` and builds on Linux for compile-verification (`EnableWindowsTargeting`,
 reference DLLs in a gitignored `lib/`), but only runs in-game on Windows.
 
-### UI (ImGui window, opened by hotkey; data collection is independent of the window)
+### UI (ImGui window, opened by a "Show window" toggle; data collection is independent of the window)
 
 ```
 ┌─ Stash Value Tracker ─────────────────────────────────────────────┐
@@ -140,15 +151,21 @@ reference DLLs in a gitignored `lib/`), but only runs in-game on Windows.
 ### Settings
 
 - `Enable` (toggle)
-- Window show/hide hotkey
-- "Show unpriced items" (default off)
+- `Show window` (toggle — opens/closes the aggregation window). A WinForms `HotkeyNode` is
+  intentionally avoided: it pulls in `System.Windows.Forms`, which breaks the plugin
+  assembly's Linux compile-verification (the build gate our process relies on). A hotkey is a
+  possible later enhancement, added/tested on Windows.
+- `Scan debounce (ms)` (default 300)
 - Data storage path (default: plugin folder)
+
+Unpriced items (value 0) are always hidden and only counted in the footer — per the chosen
+"hide" behaviour — so there is no per-item visibility toggle.
 
 ## Error handling
 
 - **NinjaPricer not loaded:** window shows a banner ("NinjaPricer not loaded — valuation
   unavailable"); scanning is skipped (no values to record).
-- **Prices not ready:** Divine-Orb probe returns 0 → defer scanning, show "waiting for price
+- **Prices not ready:** Exalted-Orb probe returns 0 → defer scanning, show "waiting for price
   data". Prevents recording all-zero snapshots.
 - **Tab read exception:** wrapped in try/catch; skip that scan, keep prior snapshot.
 - **Corrupt JSON on load:** ignore the file, start fresh, log via `LogError`.
@@ -170,4 +187,7 @@ reference DLLs in a gitignored `lib/`), but only runs in-game on Windows.
 - Live re-pricing of stackables (Approach C) — snapshot-at-scan only.
 - Reading closed tabs' contents (not possible via the API).
 - Pricing rares/uniques the bridge cannot price.
-```
+- Guild stash support (normal player stash only in v1).
+- A WinForms toggle hotkey (would break Linux compile-verification; deferred to a
+  Windows-only follow-up).
+- Stable per-tab id for `Key` (uses tab index in v1).

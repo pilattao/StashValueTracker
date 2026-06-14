@@ -1,0 +1,20 @@
+# Proprietary ExileCore2 reference DLLs — NEVER commit (overlay is licensed via lic.dat/sig.bin).
+# Used only locally for compile-verification via the exileCore2Package MSBuild property.
+lib/
+
+# .NET build output
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+
+# Compiled plugin output / artifacts
+*.dll
+*.pdb
+
+# OS / editor
+.DS_Store
+Thumbs.db

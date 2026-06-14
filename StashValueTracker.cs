@@ -83,7 +83,7 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
         }
 
         if (nowMs - _pendingSinceMs < Settings.ScanDebounceMs.Value) return;
-        if (!_bridge.PricesReady) return;
+        if (!_bridge.IsAvailable || !_bridge.PricesReady) return;
 
         var itemCount = _scanner.CurrentItemCount(stash);
         var neverScanned = _lastScanMs == 0;
@@ -99,9 +99,9 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
                 foreach (var snapshot in snapshots)
                     _store.UpsertTab(snapshot);
                 _dirty = true;
-                _lastItemCount = itemCount;
             }
             _lastScanMs = nowMs;
+            _lastItemCount = itemCount;   // unconditional: avoids re-trigger when the scan yielded nothing
         }
 
         MaybeFlush(nowMs);

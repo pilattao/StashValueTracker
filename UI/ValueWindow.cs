@@ -13,6 +13,9 @@ public sealed class ValueWindow
 {
     private readonly HashSet<string> _excluded = new();   // opt-out: everything not here is included
 
+    /// <summary>Clears the tab-exclusion filter (call on league change so a new league starts fresh).</summary>
+    public void ResetExclusions() => _excluded.Clear();
+
     /// <summary>Renders the window. Sets <paramref name="showWindow"/> false when closed; calls
     /// <paramref name="requestSave"/> after any store mutation (e.g. Forget).</summary>
     public void Draw(SnapshotStore store, double divinePerExalted, bool bridgeAvailable, bool pricesReady,

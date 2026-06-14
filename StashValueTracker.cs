@@ -52,6 +52,7 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
             FlushIfDirty();                          // persist previous league before switching
             _currentLeague = league;
             _store.LoadLeague(league);
+            _window.ResetExclusions();
             _leagueLoaded = true;
             _pendingTabKey = null;
         }
@@ -92,9 +93,9 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
             {
                 _store.UpsertTab(snapshot);
                 _dirty = true;
-                _lastScanMs = nowMs;
                 _lastItemCount = itemCount;
             }
+            _lastScanMs = nowMs;   // back off even if the scan produced nothing this frame
         }
 
         MaybeFlush(nowMs);

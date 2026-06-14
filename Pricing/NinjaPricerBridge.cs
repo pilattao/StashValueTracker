@@ -18,6 +18,7 @@ public sealed class NinjaPricerBridge
 
     private readonly TimeSpan _ratesExpiry = TimeSpan.FromMinutes(5);
     private DateTime _ratesRefreshedAt = DateTime.MinValue;
+    private DateTime _nextRatesAttempt = DateTime.MinValue;
     private double _exaltedUnit;   // bridge value of one Exalted Orb (≈1)
     private double _divineUnit;    // bridge value of one Divine Orb
 
@@ -53,6 +54,9 @@ public sealed class NinjaPricerBridge
         catch (Exception ex)
         {
             _logError($"error pricing item: {ex.Message}");
+            _getEntityValue = null;
+            _getBaseValue = null;
+            _nextRetry = DateTime.Now.AddSeconds(2);
             return 0;
         }
     }
@@ -62,8 +66,17 @@ public sealed class NinjaPricerBridge
         if (_getEntityValue != null && _getBaseValue != null) return true;
         if (DateTime.Now < _nextRetry) return false;
 
-        _getEntityValue ??= _gc.PluginBridge.GetMethod<Func<Entity, double>>("NinjaPrice.GetValue");
-        _getBaseValue ??= _gc.PluginBridge.GetMethod<Func<BaseItemType, double>>("NinjaPrice.GetBaseItemTypeValue");
+        try
+        {
+            _getEntityValue ??= _gc.PluginBridge.GetMethod<Func<Entity, double>>("NinjaPrice.GetValue");
+            _getBaseValue ??= _gc.PluginBridge.GetMethod<Func<BaseItemType, double>>("NinjaPrice.GetBaseItemTypeValue");
+        }
+        catch (Exception ex)
+        {
+            _logError($"error resolving NinjaPricer bridge methods: {ex.Message}");
+            _nextRetry = DateTime.Now.AddSeconds(2);
+            return false;
+        }
 
         if (_getEntityValue == null || _getBaseValue == null)
         {
@@ -76,7 +89,10 @@ public sealed class NinjaPricerBridge
     private void RefreshRates()
     {
         if (!EnsureMethods()) return;
-        if (DateTime.Now - _ratesRefreshedAt < _ratesExpiry && _exaltedUnit > 0) return;
+        if (_exaltedUnit > 0 && DateTime.Now - _ratesRefreshedAt < _ratesExpiry) return;
+        if (DateTime.Now < _nextRatesAttempt) return;
+        // schedule the next attempt: fast retry while not ready, slow refresh once ready
+        _nextRatesAttempt = DateTime.Now + (_exaltedUnit > 0 ? _ratesExpiry : TimeSpan.FromSeconds(2));
 
         try
         {
@@ -89,6 +105,9 @@ public sealed class NinjaPricerBridge
         catch (Exception ex)
         {
             _logError($"error refreshing orb rates: {ex.Message}");
+            _getEntityValue = null;
+            _getBaseValue = null;
+            _nextRetry = DateTime.Now.AddSeconds(2);
         }
     }
 

@@ -17,8 +17,7 @@ aggregates everything into a per-item summary, with filters for which tabs to in
 ## Status
 
 v1 implemented and passing all automated tests; pending in-game verification on Windows.
-The design spec lives in
-[`docs/superpowers/specs/`](docs/superpowers/specs/2026-06-14-stash-value-tracker-design.md).
+The design spec is maintained locally (not committed).
 
 ## Requirements
 

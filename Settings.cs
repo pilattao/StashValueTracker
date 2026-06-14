@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Windows.Forms;
 using ExileCore2.Shared.Attributes;
 using ExileCore2.Shared.Interfaces;
@@ -23,4 +24,10 @@ public class Settings : ISettings
 
     [Menu("Debug logging", "Log nested-stash structure on tab change (for diagnosing sub-tabs).")]
     public ToggleNode DebugLogging { get; set; } = new(false);
+
+    // Persisted width of the tab panel (the draggable vertical splitter). No [Menu] — hidden but saved.
+    public RangeNode<float> TabPanelWidth { get; set; } = new(240f, 120f, 800f);
+
+    // Persisted set of tab keys the user has unchecked in the filter. No [Menu] — hidden but saved.
+    public List<string> ExcludedTabKeys { get; set; } = new();
 }

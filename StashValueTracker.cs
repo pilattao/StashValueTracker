@@ -34,7 +34,7 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
         _bridge = new NinjaPricerBridge(GameController, msg => LogError($"[bridge] {msg}"));
         _scanner = new StashScanner(GameController, _bridge, msg => LogError($"[scan] {msg}"));
         _store = new SnapshotStore(Path.Combine(DirectoryFullName, "data"), msg => LogError($"[store] {msg}"));
-        _window = new ValueWindow();
+        _window = new ValueWindow(Settings);
         Input.RegisterKey(Settings.ToggleWindowHotkey.Value);
         Settings.ToggleWindowHotkey.OnValueChanged += () => Input.RegisterKey(Settings.ToggleWindowHotkey.Value);
         // League may be empty at startup; the store is loaded lazily on the first tick with a known league.
@@ -56,7 +56,6 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
             FlushIfDirty();                          // persist previous league before switching
             _currentLeague = league;
             _store.LoadLeague(league);
-            _window.ResetExclusions();
             _leagueLoaded = true;
             _pendingTabKey = null;
         }

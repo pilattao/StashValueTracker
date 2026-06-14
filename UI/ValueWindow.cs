@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using ImGuiNET;
+using StashValueTracker;
 using StashValueTracker.Aggregation;
 using StashValueTracker.Formatting;
 using StashValueTracker.Model;
@@ -12,11 +13,22 @@ namespace StashValueTracker.UI;
 
 public sealed class ValueWindow
 {
-    private readonly HashSet<string> _excluded = new();   // opt-out: everything not here is included
-    private float _leftPanelWidth = 240f;                  // draggable via the vertical splitter
+    private readonly Settings _settings;
+    private readonly HashSet<string> _excluded;   // opt-out: everything not here is included (persisted via Settings)
 
-    /// <summary>Clears the tab-exclusion filter (call on league change so a new league starts fresh).</summary>
-    public void ResetExclusions() => _excluded.Clear();
+    public ValueWindow(Settings settings)
+    {
+        _settings = settings;
+        _excluded = new HashSet<string>(settings.ExcludedTabKeys ?? new List<string>());
+    }
+
+    // Toggle a tab's exclusion and mirror it into the persisted settings list.
+    private void SetExcluded(string key, bool excluded)
+    {
+        if (excluded) _excluded.Add(key);
+        else _excluded.Remove(key);
+        _settings.ExcludedTabKeys = _excluded.ToList();
+    }
 
     /// <summary>Renders the window. Sets <paramref name="showWindow"/> false when closed; calls
     /// <paramref name="requestSave"/> after any store mutation (e.g. Forget).</summary>
@@ -43,7 +55,7 @@ public sealed class ValueWindow
             ImGui.TextDisabled($"   |   {result.UnpricedCount} items unpriced");
             ImGui.Separator();
 
-            DrawTabFilterPanel(store, tabs, divinePerExalted, requestSave);
+            DrawTabFilterPanel(store, tabs, divinePerExalted, requestSave, _settings.TabPanelWidth.Value);
             ImGui.SameLine();
             DrawSplitter();
             ImGui.SameLine();
@@ -57,7 +69,7 @@ public sealed class ValueWindow
         }
     }
 
-    // A thin draggable bar between the tab panel and the summary table; adjusts _leftPanelWidth.
+    // A thin draggable bar between the tab panel and the summary table; persists width via Settings.
     private void DrawSplitter()
     {
         const float thickness = 6f;
@@ -72,12 +84,12 @@ public sealed class ValueWindow
         if (ImGui.IsItemHovered() || ImGui.IsItemActive())
             ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
         if (ImGui.IsItemActive())
-            _leftPanelWidth = Math.Clamp(_leftPanelWidth + ImGui.GetIO().MouseDelta.X, 140f, 600f);
+            _settings.TabPanelWidth.Value = Math.Clamp(_settings.TabPanelWidth.Value + ImGui.GetIO().MouseDelta.X, 140f, 600f);
     }
 
-    private void DrawTabFilterPanel(SnapshotStore store, IReadOnlyList<TabSnapshot> tabs, double divinePerExalted, Action requestSave)
+    private void DrawTabFilterPanel(SnapshotStore store, IReadOnlyList<TabSnapshot> tabs, double divinePerExalted, Action requestSave, float panelWidth)
     {
-        ImGui.BeginChild("tabs", new Vector2(_leftPanelWidth, 0), ImGuiChildFlags.Border);
+        ImGui.BeginChild("tabs", new Vector2(panelWidth, 0), ImGuiChildFlags.Border);
         ImGui.TextDisabled("Tabs");
         ImGui.Separator();
 
@@ -101,10 +113,7 @@ public sealed class ValueWindow
         if (ImGui.Checkbox("##grpsel", ref parentChecked))
         {
             foreach (var t in node.Tabs)
-            {
-                if (parentChecked) _excluded.Remove(t.Key);
-                else _excluded.Add(t.Key);
-            }
+                SetExcluded(t.Key, !parentChecked);
         }
         ImGui.SameLine();
 
@@ -116,7 +125,7 @@ public sealed class ValueWindow
             foreach (var t in node.Tabs)
             {
                 store.ForgetTab(t.Key);
-                _excluded.Remove(t.Key);
+                SetExcluded(t.Key, false);
             }
             requestSave();
         }
@@ -137,10 +146,7 @@ public sealed class ValueWindow
 
         var included = !_excluded.Contains(tab.Key);
         if (ImGui.Checkbox($"{tab.Name}##sel", ref included))
-        {
-            if (included) _excluded.Remove(tab.Key);
-            else _excluded.Add(tab.Key);
-        }
+            SetExcluded(tab.Key, !included);
 
         var tabTotal = tab.Items.Where(i => i.TotalValueEx > 0).Sum(i => i.TotalValueEx);
         ImGui.TextDisabled($"  {CurrencyFormat.ExWithDiv(tabTotal, divinePerExalted)} · {Ago(tab.LastScannedUtc)}");
@@ -148,7 +154,7 @@ public sealed class ValueWindow
         if (RightSmallButton("Forget"))
         {
             store.ForgetTab(tab.Key);
-            _excluded.Remove(tab.Key);
+            SetExcluded(tab.Key, false);
             requestSave();
         }
 

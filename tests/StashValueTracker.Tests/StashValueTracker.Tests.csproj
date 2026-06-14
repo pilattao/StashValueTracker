@@ -10,6 +10,7 @@
     <!-- Test sources. ExileCore-free production files are linked here incrementally in later
          tasks. No project reference. -->
     <Compile Include="..\..\Model\Snapshot.cs" Link="Model\Snapshot.cs" />
+    <Compile Include="..\..\Formatting\CurrencyFormat.cs" Link="Formatting\CurrencyFormat.cs" />
     <Compile Include="*.cs" />
   </ItemGroup>
 

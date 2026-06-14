@@ -68,6 +68,8 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
             _pendingTabKey = null;
             return;
         }
+        if (!_stashWasOpen && Settings.AutoOpenWithStash.Value)
+            Settings.ShowWindow.Value = true;   // fire once on the stash-open transition
         _stashWasOpen = true;
 
         var key = _scanner.ResolveTabKey(stash);

@@ -12,6 +12,9 @@ public class Settings : ISettings
     [Menu("Show value window", "Open/close the aggregated stash value window.")]
     public ToggleNode ShowWindow { get; set; } = new(false);
 
+    [Menu("Auto-open with stash", "Open the value window automatically when you open your stash.")]
+    public ToggleNode AutoOpenWithStash { get; set; } = new(false);
+
     [Menu("Scan debounce (ms)", "How long a tab must stay open before it is scanned.")]
     public RangeNode<int> ScanDebounceMs { get; set; } = new(300, 0, 2000);
 

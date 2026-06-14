@@ -65,7 +65,7 @@ public static class StashAggregator
                 GroupKey = g.GroupKey,
                 Quantity = g.Quantity,
                 TotalEx = g.TotalEx,
-                TabNames = g.TabNames,
+                TabNames = g.TabNames.AsReadOnly(),
             })
             .OrderByDescending(r => r.TotalEx)
             .ToList();

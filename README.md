@@ -1,95 +1,83 @@
 # Stash Value Tracker
 
-An [ExileCore2](https://github.com/Stridemann/ExileCore) plugin for Path of Exile 2 that
-remembers the contents and value of every stash tab you open, then shows the combined
-worth of your whole stash across all tabs in a single, filterable summary.
+An [ExileCore2](https://github.com/Stridemann/ExileCore) plugin for **Path of Exile 2** that
+remembers the contents and value of every stash tab you open and shows the combined worth of
+your whole stash — across all tabs — in a single, sortable, filterable window.
 
-## What it does
+Because the game only exposes the **currently open** tab to memory, the plugin snapshots each tab
+as you open it and remembers those snapshots (on disk, per league). Open a tab again to refresh it.
 
-While enabled, the plugin passively records each stash tab you open — its items, their
-values (priced via [NinjaPricer](https://github.com/zelekharibo/NinjaPricer)), the tab's
-name/type, and when it was last scanned. Re-opening a tab re-scans it. A dedicated window
-aggregates everything into a per-item summary, with filters for which tabs to include.
+## Features
 
-> Only the currently open tab is readable from game memory, so the plugin remembers
-> snapshots of tabs as you open them. Re-open a tab to refresh its data.
-
-## Status
-
-v1 implemented and passing all automated tests; pending in-game verification on Windows.
-The design spec is maintained locally (not committed).
+- **Whole-stash value** aggregated into one window: one row per item (same item across tabs is
+  summed), with quantity, unit price, total, and which tab(s) it's in.
+- **Per-tab filter** — tick/untick tabs to include in the total; your selection is remembered.
+- **Sortable, resizable table** — resize, reorder, hide and sort columns; layout persists.
+- **Prices via NinjaPricer** — values are pulled from the loaded NinjaPricer plugin, shown in
+  exalted with an approximate divine value, e.g. `1240 ex (~8.7 div)`.
+- **Handles special "grid" stashes** (Currency, Runes/Socketable, Essence, Expedition, Abyss,
+  Ritual, …) — reads their full contents, not just the visible page.
+- **Per-league persistence** — snapshots are saved to disk and reload on startup, so totals are
+  available before you re-open anything.
+- **Convenience:** a toggle hotkey, and an optional "open/close the window automatically with the
+  stash".
 
 ## Requirements
 
-- ExileCore2 overlay (Windows).
-- **NinjaPricer** plugin loaded — this plugin uses its prices via PluginBridge and does not
-  price items on its own. Without NinjaPricer, valuation is unavailable.
+- [ExileCore2](https://github.com/Stridemann/ExileCore) overlay (Windows).
+- The **[NinjaPricer](https://github.com/zelekharibo/NinjaPricer)** plugin, loaded and with price
+  data downloaded. This plugin does **not** price items itself — without NinjaPricer the window
+  shows a "not loaded / waiting for price data" banner and records nothing.
+
+## Install
+
+1. Clone (or download) this repo into your ExileCore `Plugins/Source` folder so the path is:
+   ```
+   <ExileCore2>/Plugins/Source/StashValueTracker
+   ```
+   e.g. `git clone https://github.com/pilattao/StashValueTracker.git` inside `Plugins/Source`.
+2. (Re)start ExileCore — it compiles the plugin automatically.
+3. Make sure **NinjaPricer** is enabled and has prices.
+
+> The `tests/` folder and the design docs are for development only; ExileCore ignores them.
 
 ## Usage
 
-1. Enable the plugin in ExileCore.
-2. **NinjaPricer must be loaded** — this plugin prices items via its PluginBridge. Without it,
-   valuation is unavailable and the window shows a "not loaded" banner.
-3. Open stash tabs to scan them. The currently open tab also re-scans periodically (~2.5 s)
-   and whenever its item count changes.
-4. Toggle **"Show value window"** in the plugin settings to view the aggregated total across
-   all remembered tabs.
-5. Use the left panel checkboxes to include or exclude tabs from the total (all tabs are
-   included by default; newly scanned tabs are auto-included). Click **"Forget"** to drop a
-   stale tab and remove it from memory.
-6. Snapshots persist to disk per league (in the plugin's `data/` folder) and reload
-   automatically on startup — totals are available before you re-open any tabs.
+1. Enable the plugin and open the **Stash Value Tracker** window — tick **"Show value window"** in
+   the plugin settings, press your bound hotkey, or enable **"Auto-open/close with stash"**.
+2. Open your stash tabs once each so they get scanned. The open tab also re-scans when its item
+   count changes, and switching tabs scans the new one.
+3. The window shows the combined, sorted item list. Use the **left panel** to include/exclude
+   tabs; **drag the vertical divider** to resize the panel; **Forget** drops a stale tab.
 
-### Hotkey
+## Settings
 
-- In the plugin settings, bind a **toggle hotkey** and press it in-game to open or close the
-  value window without going into settings.
+- **Show value window** — open/close the window.
+- **Auto-open/close with stash** — open the window when the stash opens, close it when it closes.
+- **Toggle window hotkey** — bind a key to open/close the window in-game.
+- **Scan debounce (ms)** — how long a tab must stay open before it's scanned.
 
-### Tabs with sub-tabs (e.g. Rune or Affinity stash)
+Window state that persists across restarts: the tab include/exclude selection, the divider
+position, and the table column layout (order, width, visibility, sort).
 
-- Tabs that contain sub-tabs (e.g. Rune stash, Affinity stash) are tracked **per sub-tab**.
-  Open each sub-tab at least once so the plugin can scan it.
-- In the left-panel filter the sub-tabs appear **grouped under their parent tab**. The parent
-  entry shows the **combined value** of all its sub-tabs and a **(N sub-tabs)** hint.
-- The parent's **checkbox** toggles every sub-tab at once; **Forget** on the parent drops all
-  sub-tabs from memory.
+## Building (contributors)
 
-### Auto-refresh and re-scan interval
+Targets `net8.0-windows`; runs in-game on Windows. Pure-logic parts have xUnit tests that run on
+any platform:
 
-- **"Auto-refresh open tab"** (on by default) re-scans the currently open tab on a timer.
-  Turn it off to scan only when you switch tabs (useful if you want no background activity).
-- **"Re-scan interval"** controls the refresh cadence; lower the value for faster updates or
-  raise it to reduce overhead.
+```bash
+dotnet test tests/StashValueTracker.Tests/StashValueTracker.Tests.csproj
+```
 
-### Summary table layout
+The plugin assembly can be compile-checked off-Windows with `EnableWindowsTargeting` and the
+ExileCore2 reference DLLs pointed at via the `exileCore2Package` MSBuild property:
 
-- The summary table columns can be **resized**, **reordered**, and **hidden** by right-clicking
-  a column header, and **sorted** by clicking a header. Numeric value columns are right-aligned.
-  The layout (column order, widths, visibility, sort) persists across sessions.
+```bash
+exileCore2Package="/path/to/exilecore/dlls" dotnet build StashValueTracker.csproj -c Debug
+```
 
-## Building
+Those ExileCore2 DLLs are proprietary and are **not** committed (see `.gitignore`).
 
-Targets `net8.0-windows`; runs in-game on Windows. It can be compile-checked on Linux/CI
-with `EnableWindowsTargeting` and the ExileCore2 reference DLLs supplied via the
-`exileCore2Package` MSBuild property. Those DLLs are proprietary and are **not** committed
-(see `.gitignore`).
+## License
 
-## Manual test checklist (Windows / in-game)
-
-- [ ] With NinjaPricer loaded and price data ready, open a Currency tab → items get scanned (log line appears).
-- [ ] Toggle "Show value window" → window shows the tab in the left panel and items on the right.
-- [ ] Open a second tab → it appears and is auto-included; totals update; an item in both tabs merges into one row with a "Tab +N" label and a tooltip listing both tabs.
-- [ ] Add items to the open tab without closing it → within ~3s the tab re-scans and totals update.
-- [ ] Uncheck a tab → its items/total drop out; re-check → they return; a newly scanned tab is included by default.
-- [ ] "Forget" a tab → it disappears and the data file updates.
-- [ ] Restart the overlay → snapshots reload from disk; totals present before re-opening tabs.
-- [ ] Disable NinjaPricer → "not loaded" banner; no scanning.
-- [ ] Switch league → window reflects the new league's separate snapshots; the old league's file is unchanged.
-- [ ] Reorder tabs (if applicable) → confirm whether identity holds (name-based key); note any drift for the stable-id follow-up.
-- [ ] Bind the toggle-window hotkey in settings; press it in-game → the window opens/closes.
-- [ ] Open a nested stash (e.g. rune/affinity) and visit each sub-tab → each sub-tab is scanned; the filter shows them grouped under the parent with the parent's combined value and "(N sub-tabs)"; the parent checkbox toggles all sub-tabs and "Forget" on the parent drops them all.
-- [ ] Switching sub-tabs does not overwrite other sub-tabs' values.
-- [ ] Empty an active sub-tab and re-open/re-scan it → its stored value drops to 0 (not stuck at the old total); the parent's combined value decreases.
-- [ ] Sub-tab entries are stable/distinct with no duplicates and no ghost "/ -1" row.
-- [ ] Turn off "Auto-refresh open tab" → the open tab no longer re-scans on a timer; switching tabs still scans. Turn it on and change "Re-scan interval" → the open tab refreshes at the new cadence.
-- [ ] In the summary table, resize/reorder/hide columns and click headers to sort; numeric columns are right-aligned and the layout persists across sessions.
+Provided as-is for the PoE2 ExileCore community. Use at your own risk.

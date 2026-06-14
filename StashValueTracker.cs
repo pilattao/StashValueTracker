@@ -86,8 +86,6 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
             _pendingSinceMs = nowMs;
             _lastScanMs = 0;
             _lastItemCount = -1;
-            if (Settings.DebugLogging)
-                LogMessage($"[nested-debug] {_scanner.DescribeVisibleStash(stash)}");
             return;
         }
 

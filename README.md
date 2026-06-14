@@ -1,6 +1,6 @@
 # Stash Value Tracker
 
-An [ExileCore2](https://github.com/Stridemann/ExileCore) plugin for **Path of Exile 2** that
+An ExileCore2 plugin for **Path of Exile 2** that
 remembers the contents and value of every stash tab you open and shows the combined worth of
 your whole stash — across all tabs — in a single, sortable, filterable window.
 
@@ -24,7 +24,7 @@ as you open it and remembers those snapshots (on disk, per league). Open a tab a
 
 ## Requirements
 
-- [ExileCore2](https://github.com/Stridemann/ExileCore) overlay (Windows).
+- ExileCore2 overlay (Windows).
 - The **[NinjaPricer](https://github.com/zelekharibo/NinjaPricer)** plugin, loaded and with price
   data downloaded. This plugin does **not** price items itself — without NinjaPricer the window
   shows a "not loaded / waiting for price data" banner and records nothing.

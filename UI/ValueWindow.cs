@@ -111,8 +111,7 @@ public sealed class ValueWindow
         var open = ImGui.TreeNodeEx($"{node.Label} ({node.Tabs.Count} sub-tabs)##grp");
         ImGui.SameLine();
         ImGui.TextDisabled($"  {CurrencyFormat.ExWithDiv(node.TotalEx, divinePerExalted)}");
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Forget##grp"))
+        if (RightSmallButton("Forget##grp"))
         {
             foreach (var t in node.Tabs)
             {
@@ -146,8 +145,7 @@ public sealed class ValueWindow
         var tabTotal = tab.Items.Where(i => i.TotalValueEx > 0).Sum(i => i.TotalValueEx);
         ImGui.TextDisabled($"  {CurrencyFormat.ExWithDiv(tabTotal, divinePerExalted)} · {Ago(tab.LastScannedUtc)}");
 
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Forget"))
+        if (RightSmallButton("Forget"))
         {
             store.ForgetTab(tab.Key);
             _excluded.Remove(tab.Key);
@@ -162,12 +160,14 @@ public sealed class ValueWindow
     {
         ImGui.BeginChild("summary", new Vector2(0, 0), ImGuiChildFlags.Border);
 
+        // ScrollX + all-fixed columns: dragging a column border resizes only that column (the table
+        // scrolls / grows) instead of squashing its neighbour.
         var flags = ImGuiTableFlags.Resizable | ImGuiTableFlags.Reorderable | ImGuiTableFlags.Hideable
                   | ImGuiTableFlags.Sortable | ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH
-                  | ImGuiTableFlags.ScrollY;
-        if (ImGui.BeginTable("svt_items", 5, flags))
+                  | ImGuiTableFlags.ScrollX | ImGuiTableFlags.ScrollY;
+        if (ImGui.BeginTable("svt_items_v2", 5, flags))
         {
-            ImGui.TableSetupColumn("Item", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Item", ImGuiTableColumnFlags.WidthFixed, 320);
             ImGui.TableSetupColumn("Tab", ImGuiTableColumnFlags.WidthFixed, 120);
             ImGui.TableSetupColumn("Qty", ImGuiTableColumnFlags.WidthFixed, 60);
             ImGui.TableSetupColumn("Unit", ImGuiTableColumnFlags.WidthFixed, 130);
@@ -197,6 +197,21 @@ public sealed class ValueWindow
         }
 
         ImGui.EndChild();
+    }
+
+    // Draws a SmallButton flush against the right edge of the current content region, so buttons on
+    // consecutive rows line up vertically regardless of the text before them.
+    private static bool RightSmallButton(string label)
+    {
+        var visible = label;
+        var hash = label.IndexOf("##", StringComparison.Ordinal);
+        if (hash >= 0) visible = label.Substring(0, hash);
+        var w = ImGui.CalcTextSize(visible).X + ImGui.GetStyle().FramePadding.X * 2f;
+
+        ImGui.SameLine();
+        var spare = ImGui.GetContentRegionAvail().X - w;
+        if (spare > 0) ImGui.SetCursorPosX(ImGui.GetCursorPosX() + spare);
+        return ImGui.SmallButton(label);
     }
 
     private static void RightText(string s)

@@ -203,11 +203,10 @@ public sealed class ValueWindow
     {
         if (!tab.Scanned && tab.ColorArgb == 0) return new Vector4(0.45f, 0.45f, 0.45f, 1f);
         if (tab.ColorArgb == 0) return new Vector4(0.55f, 0.55f, 0.55f, 1f);
-        var a = (byte)((tab.ColorArgb >> 24) & 0xFF);
         var r = (byte)((tab.ColorArgb >> 16) & 0xFF);
         var g = (byte)((tab.ColorArgb >> 8) & 0xFF);
         var b = (byte)(tab.ColorArgb & 0xFF);
-        if (a == 0) a = 255;
+        // Alpha fixed at 1f — the frame fill/border alpha is applied where the rects are drawn.
         return new Vector4(r / 255f, g / 255f, b / 255f, 1f);
     }
 

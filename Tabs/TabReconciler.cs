@@ -72,4 +72,51 @@ public static partial class TabReconciler
         var missing = stored.Where(x => !claimed.Contains(x)).ToList();
         return new ReconcileOutcome { Matches = resolved, Missing = missing };
     }
+
+    /// <summary>Apply a roster match to the stored list: refresh matched tabs, add grey placeholders
+    /// for new tabs, prune deleted tabs (only when the roster is stable and no unexplained new tab is
+    /// present — keeping the fingerprint reunion window open). Returns true if anything changed.</summary>
+    public static bool ApplyRoster(List<TabSnapshot> stored, IReadOnlyList<TabRosterEntry> roster,
+                                   bool rosterStable, Func<string> newKey)
+    {
+        if (stored == null) return false;
+        roster ??= Array.Empty<TabRosterEntry>();
+
+        var outcome = Match(roster, stored);
+        var changed = false;
+
+        foreach (var m in outcome.Matches)
+        {
+            if (m.Stored != null)
+            {
+                if (m.Stored.Name != m.Live.Name) { m.Stored.Name = m.Live.Name; changed = true; }
+                if (m.Stored.ColorArgb != m.Live.ColorArgb) { m.Stored.ColorArgb = m.Live.ColorArgb; changed = true; }
+                if (m.Stored.TabType != m.Live.TabType) { m.Stored.TabType = m.Live.TabType; changed = true; }
+                if (m.Stored.VisibleIndex != m.Live.VisibleIndex) { m.Stored.VisibleIndex = m.Live.VisibleIndex; changed = true; }
+            }
+            else
+            {
+                stored.Add(new TabSnapshot
+                {
+                    Key = newKey(),
+                    Name = m.Live.Name,
+                    ColorArgb = m.Live.ColorArgb,
+                    TabType = m.Live.TabType,
+                    VisibleIndex = m.Live.VisibleIndex,
+                    Scanned = false,
+                    Items = new List<ItemSnapshot>(),
+                });
+                changed = true;
+            }
+        }
+
+        var hasNew = outcome.Matches.Any(m => m.Kind == TabMatchKind.New);
+        if (rosterStable && !hasNew)
+        {
+            foreach (var miss in outcome.Missing)
+                if (stored.Remove(miss)) changed = true;
+        }
+
+        return changed;
+    }
 }

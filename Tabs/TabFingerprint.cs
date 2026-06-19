@@ -17,10 +17,13 @@ public static class TabFingerprint
             // cancel duplicate entries — two identical stacks would vanish, colliding with an
             // empty tab. Addition is the correct order-independent multiset fold.)
             var name = i?.GroupKey ?? "";
-            long h = 1125899906842597;
-            foreach (var c in name) h = h * 31 + c;
-            h = h * 1000003 + (i?.StackSize ?? 0);
-            unchecked { acc += h; }
+            unchecked
+            {
+                long h = 1125899906842597;
+                foreach (var c in name) h = h * 31 + c;
+                h = h * 1000003 + (i?.StackSize ?? 0);
+                acc += h;
+            }
         }
         return acc;
     }

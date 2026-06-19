@@ -24,3 +24,6 @@ docs/
 
 # Brainstorming visual-companion artifacts — local only.
 .superpowers/
+
+# Per-release Discord announcement drafts — local only, one file per release.
+discord-announcements/

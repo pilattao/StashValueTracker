@@ -42,30 +42,6 @@ value filters, smarter currency display, and a more legible table.
 - Display is exalted/divine only; there is no chaos unit and no currency selector
   — the auto-unit handles the choice for you.
 
-### 📣 Discord announcement
-
-Copy-paste this into the app's Discord channel:
-
-```
-🎉 **Stash Value Tracker v1.1.0 is out!**
-
-This update is all about cutting the noise and reading your stash at a glance.
-
-**✨ New**
-• **Value filters** — set a minimum **total** and/or **unit price** (in ex). Anything below drops out of the table, the grand total, *and* the per-tab totals. `0` = off, and your thresholds are remembered.
-• **Item search** — quick name filter above the table.
-• **Per-tab %** — each tab now shows its share of your selected total.
-• **Both-currency tooltips** — hover any value to see it in divine *and* exalted (`53 div · 7 565 ex`).
-
-**🔧 Improved**
-• **Smart currency** — values auto-pick divine or exalted by size (goodbye `0.007 div`).
-• **Thousands separators** — `50 000` instead of `50000`.
-• **Cleaner table** — column dividers, aligned numbers, sort arrows.
-
-📥 Update: pull the latest and restart ExileCore (it recompiles automatically).
-Feedback and bug reports welcome! 🧡
-```
-
 ## [1.0.0] - 2026-06-15
 
 First release.

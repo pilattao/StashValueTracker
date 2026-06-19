@@ -21,3 +21,6 @@ Thumbs.db
 
 # Design/process docs — local only, not needed for the plugin to run.
 docs/
+
+# Brainstorming visual-companion artifacts — local only.
+.superpowers/

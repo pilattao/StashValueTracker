@@ -4,6 +4,7 @@ using ExileCore2;
 using StashValueTracker.Pricing;
 using StashValueTracker.Scanning;
 using StashValueTracker.Storage;
+using StashValueTracker.Tabs;
 using StashValueTracker.UI;
 
 namespace StashValueTracker;
@@ -16,6 +17,8 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
     private StashScanner _scanner = null!;
     private SnapshotStore _store = null!;
     private ValueWindow _window = null!;
+    private StashRoster _roster = null!;
+    private string _lastRosterSig = "";
 
     private string _currentLeague = "";
     private bool _leagueLoaded;
@@ -33,6 +36,7 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
     {
         _bridge = new NinjaPricerBridge(GameController, msg => LogError($"[bridge] {msg}"));
         _scanner = new StashScanner(GameController, _bridge, msg => LogError($"[scan] {msg}"));
+        _roster = new StashRoster(GameController, msg => LogError($"[roster] {msg}"));
         _store = new SnapshotStore(Path.Combine(DirectoryFullName, "data"), msg => LogError($"[store] {msg}"));
         _window = new ValueWindow(Settings);
         Input.RegisterKey(Settings.ToggleWindowHotkey.Value);
@@ -77,6 +81,15 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
             Settings.ShowWindow.Value = true;            // fire once on the stash-open transition
         _stashWasOpen = true;
 
+        var roster = _roster.Read();
+        if (roster.Count > 0)
+        {
+            var sig = StashRoster.RosterSignature(roster);
+            var rosterStable = sig == _lastRosterSig;
+            _lastRosterSig = sig;
+            if (_store.SyncRoster(roster, rosterStable)) _dirty = true;
+        }
+
         var key = _scanner.ResolveTabKey(stash);
         var nowMs = Environment.TickCount64;
 
@@ -102,7 +115,7 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
             if (snapshots.Count > 0)
             {
                 foreach (var snapshot in snapshots)
-                    _store.UpsertTab(snapshot);
+                    _store.RecordScan(snapshot);
                 _dirty = true;
             }
             _lastScanMs = nowMs;

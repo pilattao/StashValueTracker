@@ -74,11 +74,12 @@ public sealed class StashScanner
         var idx = stash.IndexVisibleStash;
         var inventories = stash.Inventories;
         var rawName = inventories != null && idx >= 0 && idx < inventories.Count ? inventories[idx].TabName : null;
-        var key = !string.IsNullOrWhiteSpace(rawName) ? "name:" + rawName : "idx:" + idx;
         var name = !string.IsNullOrWhiteSpace(rawName) ? rawName : $"Tab {idx}";
 
         var items = CollectItems(visible);
-        return new[] { BuildSnapshot(key, name, visible.InvType.ToString(), items, nowUtc) };
+        var snapshot = BuildSnapshot("", name, visible.InvType.ToString(), items, nowUtc);
+        snapshot.VisibleIndex = idx;
+        return new[] { snapshot };
     }
 
     /// <summary>All items in the visible stash: sub-inventory contents when present (covers grid

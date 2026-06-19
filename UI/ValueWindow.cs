@@ -47,12 +47,14 @@ public sealed class ValueWindow
 
             var tabs = store.Tabs;
             var includeKeys = tabs.Select(t => t.Key).Where(k => !_excluded.Contains(k)).ToHashSet();
-            var result = StashAggregator.Aggregate(tabs, includeKeys);
+            var result = StashAggregator.Aggregate(tabs, includeKeys,
+                _settings.MinTotalEx.Value, _settings.MinUnitEx.Value);
 
             ImGui.TextColored(new Vector4(0.55f, 0.85f, 1f, 1f),
                 $"Total (selected): {CurrencyFormat.ExWithDiv(result.GrandTotalEx, divinePerExalted)}");
             ImGui.SameLine();
             ImGui.TextDisabled($"   |   {result.UnpricedCount} items unpriced");
+            DrawThresholds(result.HiddenCount);
             ImGui.Separator();
 
             DrawTabFilterPanel(store, tabs, divinePerExalted, requestSave, _settings.TabPanelWidth.Value);
@@ -66,6 +68,27 @@ public sealed class ValueWindow
         finally
         {
             Theme.Pop();
+        }
+    }
+
+    // Two integer-ex threshold inputs (0 = off) plus a hidden-count hint. Persisted via Settings.
+    private void DrawThresholds(int hiddenCount)
+    {
+        var total = _settings.MinTotalEx.Value;
+        ImGui.SetNextItemWidth(90);
+        if (ImGui.InputInt("Min total (ex)", ref total, 0, 0))
+            _settings.MinTotalEx.Value = Math.Max(0, total);
+
+        ImGui.SameLine();
+        var unit = _settings.MinUnitEx.Value;
+        ImGui.SetNextItemWidth(90);
+        if (ImGui.InputInt("Min unit (ex)", ref unit, 0, 0))
+            _settings.MinUnitEx.Value = Math.Max(0, unit);
+
+        if (hiddenCount > 0)
+        {
+            ImGui.SameLine();
+            ImGui.TextDisabled($"   {hiddenCount} hidden by filter");
         }
     }
 

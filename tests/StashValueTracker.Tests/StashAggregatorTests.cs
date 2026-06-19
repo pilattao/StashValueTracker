@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using StashValueTracker.Aggregation;
 using StashValueTracker.Model;
 using Xunit;
@@ -136,5 +137,22 @@ public class StashAggregatorTests
         var r = StashAggregator.Aggregate(tabs, new HashSet<string> { "k" }, minTotalEx: 100, minUnitEx: 1);
         Assert.Empty(r.Rows);
         Assert.Equal(1, r.HiddenCount);
+    }
+
+    [Fact]
+    public void TabTotals_split_passing_groups_by_tab_key()
+    {
+        var tabs = new[]
+        {
+            Tab("k:cur", "Currency", Item("Divine", 1, 300)),
+            Tab("k:val", "Valuables", Item("Divine", 1, 200), Item("Junk", 1, 5)),
+        };
+        // Divine combined total 500 passes; Junk (5) hidden.
+        var r = StashAggregator.Aggregate(tabs, new HashSet<string> { "k:cur", "k:val" }, minTotalEx: 100);
+
+        Assert.Equal(300, r.TabTotalsEx["k:cur"]);
+        Assert.Equal(200, r.TabTotalsEx["k:val"]);   // Divine's share only; Junk excluded
+        Assert.Equal(500, r.GrandTotalEx);
+        Assert.Equal(r.GrandTotalEx, r.TabTotalsEx.Values.Sum());
     }
 }

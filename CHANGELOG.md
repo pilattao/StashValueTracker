@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## [1.2.0] - 2026-06-19
+
+This release makes the tab panel mirror your real stash: every tab, in its own
+colour, with values that follow a tab when you rename, move, or recolour it.
+
+### Added
+- **Coloured tab frames** — each tab in the left panel is framed in its in-game
+  tab colour, read from the live stash.
+- **All your tabs, always** — the panel now lists every stash tab (from the live
+  tab roster), including ones you have not opened yet. Unscanned tabs appear
+  greyed as `not scanned`, carry no value, and are not counted until you open
+  them once.
+- **Tab values survive edits** — a tab's stored value now follows it when you
+  **rename, move, or recolour** it in-game, instead of orphaning the old data. It
+  is matched first by name, then by colour/type/position, then by tab contents.
+- **Divine rate in the header** — the current divine↔exalted rate is shown as
+  `1 div = N ex`.
+
+### Changed
+- **Tabs ordered by stash position** — the left panel now follows your in-game
+  tab order instead of sorting alphabetically.
+- **Forget now resets a tab** — Forget clears a tab's cached value and returns it
+  to `not scanned` rather than removing the row; the tab still exists in your
+  stash, so it stays listed and re-fills the next time you open it.
+
+### Fixed
+- **Per-tab contribution %** now renders — the `%` sign was being swallowed by
+  ImGui's text formatting.
+- **Tab-name tooltips** no longer break when a tab name contains a `%` character.
+
 ## [1.1.0] - 2026-06-19
 
 This release is about cutting the noise and reading your stash at a glance:
@@ -64,6 +94,7 @@ First release.
 - **Convenience** — a toggle hotkey, and an optional "open/close the window
   automatically with the stash".
 
-[Unreleased]: https://github.com/pilattao/StashValueTracker/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/pilattao/StashValueTracker/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/pilattao/StashValueTracker/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/pilattao/StashValueTracker/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/pilattao/StashValueTracker/releases/tag/v1.0.0

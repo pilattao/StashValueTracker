@@ -51,7 +51,9 @@ public sealed class ValueWindow
                 _settings.MinTotalEx.Value, _settings.MinUnitEx.Value);
 
             ImGui.TextColored(new Vector4(0.55f, 0.85f, 1f, 1f),
-                $"Total (selected): {CurrencyFormat.ExWithDiv(result.GrandTotalEx, divinePerExalted)}");
+                $"Total (selected): {CurrencyFormat.Auto(result.GrandTotalEx, divinePerExalted)}");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(CurrencyFormat.Tooltip(result.GrandTotalEx, divinePerExalted));
             ImGui.SameLine();
             ImGui.TextDisabled($"   |   {result.UnpricedCount} items unpriced");
             DrawThresholds(result.HiddenCount);
@@ -148,7 +150,9 @@ public sealed class ValueWindow
             pct = "";
         }
 
-        ImGui.TextDisabled($"  {CurrencyFormat.ExWithDiv(tabTotal, divinePerExalted)}{pct} · {Ago(tab.LastScannedUtc)}");
+        ImGui.TextDisabled($"  {CurrencyFormat.Auto(tabTotal, divinePerExalted)}{pct} · {Ago(tab.LastScannedUtc)}");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(CurrencyFormat.Tooltip(tabTotal, divinePerExalted));
 
         if (RightSmallButton("Forget"))
         {

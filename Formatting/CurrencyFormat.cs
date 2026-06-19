@@ -17,14 +17,6 @@ public static class CurrencyFormat
         return value.ToString("#,##0.##", Grp);
     }
 
-    public static string ExWithDiv(double exalted, double divinePerExalted)
-    {
-        var ex = FormatNumber(exalted);
-        if (divinePerExalted <= 0) return ex + " ex";
-        var div = exalted * divinePerExalted;
-        return $"{ex} ex (~{FormatNumber(div)} div)";
-    }
-
     /// <summary>Inline value in the largest readable unit: divine when ≥ 1 div, else exalted.</summary>
     public static string Auto(double exalted, double divinePerExalted)
     {

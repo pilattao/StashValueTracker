@@ -15,6 +15,7 @@ public sealed class ValueWindow
 {
     private readonly Settings _settings;
     private readonly HashSet<string> _excluded;   // opt-out: everything not here is included (persisted via Settings)
+    private string _search = "";
 
     public ValueWindow(Settings settings)
     {
@@ -164,15 +165,19 @@ public sealed class ValueWindow
         ImGui.PopID();
     }
 
-    private static void DrawSummaryTable(AggregationResult result, double divinePerExalted)
+    private void DrawSummaryTable(AggregationResult result, double divinePerExalted)
     {
         ImGui.BeginChild("summary", new Vector2(0, 0), ImGuiChildFlags.Border);
 
-        // ScrollX + all-fixed columns: dragging a column border resizes only that column (the table
-        // scrolls / grows) instead of squashing its neighbour.
+        ImGui.SetNextItemWidth(-1);
+        ImGui.InputTextWithHint("##search", "Search item...", ref _search, 128);
+
+        // ScrollX + fixed columns: dragging a column border resizes only that column.
+        // BordersInnerV adds the readable vertical dividers; numbers are left-aligned so the
+        // (left-aligned) headers line up with their values.
         var flags = ImGuiTableFlags.Resizable | ImGuiTableFlags.Reorderable | ImGuiTableFlags.Hideable
                   | ImGuiTableFlags.Sortable | ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH
-                  | ImGuiTableFlags.ScrollX | ImGuiTableFlags.ScrollY;
+                  | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.ScrollX | ImGuiTableFlags.ScrollY;
         if (ImGui.BeginTable("svt_items_v2", 5, flags))
         {
             ImGui.TableSetupColumn("Item", ImGuiTableColumnFlags.WidthFixed, 320);
@@ -182,7 +187,7 @@ public sealed class ValueWindow
             ImGui.TableSetupColumn("Total", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.DefaultSort, 150);
             ImGui.TableHeadersRow();
 
-            foreach (var row in SortRows(result.Rows))
+            foreach (var row in SortRows(Filter(result.Rows, _search)))
             {
                 ImGui.TableNextRow();
 
@@ -194,17 +199,31 @@ public sealed class ValueWindow
                 if (row.TabNames.Count > 1 && ImGui.IsItemHovered())
                     ImGui.SetTooltip(string.Join("\n", row.TabNames));
 
-                ImGui.TableNextColumn(); RightText(row.Quantity.ToString());
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(row.Quantity.ToString());
 
-                ImGui.TableNextColumn(); RightText(CurrencyFormat.ExWithDiv(row.UnitEx, divinePerExalted));
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(CurrencyFormat.Auto(row.UnitEx, divinePerExalted));
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip(CurrencyFormat.Tooltip(row.UnitEx, divinePerExalted));
 
-                ImGui.TableNextColumn(); RightText(CurrencyFormat.ExWithDiv(row.TotalEx, divinePerExalted));
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(CurrencyFormat.Auto(row.TotalEx, divinePerExalted));
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip(CurrencyFormat.Tooltip(row.TotalEx, divinePerExalted));
             }
 
             ImGui.EndTable();
         }
 
         ImGui.EndChild();
+    }
+
+    // Case-insensitive substring filter on the item name. View-only: does not affect totals.
+    private static IReadOnlyList<AggregatedRow> Filter(IReadOnlyList<AggregatedRow> rows, string search)
+    {
+        if (string.IsNullOrWhiteSpace(search)) return rows;
+        return rows.Where(r => r.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
     // Draws a SmallButton flush against the right edge of the current content region, so buttons on
@@ -220,15 +239,6 @@ public sealed class ValueWindow
         var spare = ImGui.GetContentRegionAvail().X - w;
         if (spare > 0) ImGui.SetCursorPosX(ImGui.GetCursorPosX() + spare);
         return ImGui.SmallButton(label);
-    }
-
-    private static void RightText(string s)
-    {
-        var w = ImGui.CalcTextSize(s).X;
-        var avail = ImGui.GetContentRegionAvail().X;
-        var off = avail - w;
-        if (off > 0) ImGui.SetCursorPosX(ImGui.GetCursorPosX() + off);
-        ImGui.TextUnformatted(s);
     }
 
     // Applies ImGui's current sort spec; defaults to Total desc (already provided by the aggregator).

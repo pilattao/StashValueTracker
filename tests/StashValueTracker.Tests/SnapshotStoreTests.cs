@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using StashValueTracker.Model;
 using StashValueTracker.Storage;
+using StashValueTracker.Tabs;
 using Xunit;
 
 namespace StashValueTracker.Tests;
@@ -50,15 +51,55 @@ public class SnapshotStoreTests
     }
 
     [Fact]
-    public void ForgetTab_removes_by_key()
+    public void ResetTab_clears_content_but_keeps_row()
     {
         var store = new SnapshotStore(TempDir());
         store.LoadLeague("Standard");
-        store.UpsertTab(SampleTab("name:A"));
-        store.UpsertTab(SampleTab("name:B"));
-        store.ForgetTab("name:A");
-        var tab = Assert.Single(store.Tabs);
-        Assert.Equal("name:B", tab.Key);
+        store.UpsertTab(new TabSnapshot
+        {
+            Key = "id:1", Name = "Currency", Scanned = true, Fingerprint = 99,
+            Items = new System.Collections.Generic.List<ItemSnapshot> { new() { GroupKey = "X", StackSize = 1, TotalValueEx = 1 } },
+        });
+        store.ResetTab("id:1");
+        var t = Assert.Single(store.Tabs);
+        Assert.Equal("id:1", t.Key);
+        Assert.False(t.Scanned);
+        Assert.Empty(t.Items);
+        Assert.Equal(0, t.Fingerprint);
+    }
+
+    [Fact]
+    public void SyncRoster_adds_placeholder_and_reports_change()
+    {
+        var store = new SnapshotStore(TempDir());
+        store.LoadLeague("Standard");
+        var changed = store.SyncRoster(
+            new[] { new TabRosterEntry { Name = "Maps", ColorArgb = 3, TabType = "Map", VisibleIndex = 1 } },
+            rosterStable: true);
+        Assert.True(changed);
+        var t = Assert.Single(store.Tabs);
+        Assert.Equal("Maps", t.Name);
+        Assert.False(t.Scanned);
+        Assert.StartsWith("id:", t.Key);
+    }
+
+    [Fact]
+    public void RecordScan_fills_the_synced_placeholder()
+    {
+        var store = new SnapshotStore(TempDir());
+        store.LoadLeague("Standard");
+        store.SyncRoster(
+            new[] { new TabRosterEntry { Name = "Maps", ColorArgb = 3, TabType = "Map", VisibleIndex = 1 } },
+            rosterStable: true);
+        store.RecordScan(new TabSnapshot
+        {
+            Name = "Maps", Type = "Quad", VisibleIndex = 1,
+            Items = new System.Collections.Generic.List<ItemSnapshot> { new() { GroupKey = "Y", StackSize = 3, TotalValueEx = 9 } },
+        });
+        var t = Assert.Single(store.Tabs);
+        Assert.True(t.Scanned);
+        Assert.Equal(3, Assert.Single(t.Items).StackSize);
+        Assert.Equal(3, t.ColorArgb);   // colour preserved from the placeholder
     }
 
     [Fact]

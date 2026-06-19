@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using StashValueTracker.Model;
+using StashValueTracker.Tabs;
 
 namespace StashValueTracker.Storage;
 
@@ -56,6 +57,26 @@ public sealed class SnapshotStore
     }
 
     public void ForgetTab(string key) => _current.Tabs.RemoveAll(t => t.Key == key);
+
+    private static string NewKey() => "id:" + Guid.NewGuid().ToString("N");
+
+    /// <summary>Reconcile the live roster into the store. Returns true if anything changed.</summary>
+    public bool SyncRoster(IReadOnlyList<TabRosterEntry> roster, bool rosterStable) =>
+        TabReconciler.ApplyRoster(_current.Tabs, roster, rosterStable, NewKey);
+
+    /// <summary>Integrate a freshly-scanned tab (resolves identity, reunites renamed tabs).</summary>
+    public void RecordScan(TabSnapshot scanned) =>
+        TabReconciler.RecordScan(_current.Tabs, scanned, NewKey);
+
+    /// <summary>Forget: clear a tab's scanned content but keep the row (the roster still lists it).</summary>
+    public void ResetTab(string key)
+    {
+        var t = _current.Tabs.Find(x => x.Key == key);
+        if (t == null) return;
+        t.Items = new List<ItemSnapshot>();
+        t.Fingerprint = 0;
+        t.Scanned = false;
+    }
 
     public void Save()
     {

@@ -27,7 +27,8 @@ public class TabReconcilerScanTests
         var placeholder = new TabSnapshot { Key = "k1", Name = "Loot", ColorArgb = 7, TabType = "Map", Scanned = false, Items = new() };
         var stored = new List<TabSnapshot> { placeholder };
 
-        TabReconciler.RecordScan(stored, ScanInput("Loot", 3, Content("Divine Orb", 2)), Keys());
+        TabReconciler.RecordScan(stored, ScanInput("Loot", 3, Content("Divine Orb", 2)), Keys(),
+            new HashSet<string> { "Loot" });
 
         var t = Assert.Single(stored);
         Assert.Equal("k1", t.Key);
@@ -48,7 +49,8 @@ public class TabReconcilerScanTests
                                             VisibleIndex = 8, Scanned = false, Items = new() };
         var stored = new List<TabSnapshot> { orphan, placeholder };
 
-        TabReconciler.RecordScan(stored, ScanInput("NewName", 8, Content("Mirror", 1)), Keys());
+        TabReconciler.RecordScan(stored, ScanInput("NewName", 8, Content("Mirror", 1)), Keys(),
+            new HashSet<string> { "NewName" });
 
         var t = Assert.Single(stored);                  // placeholder dropped
         Assert.Equal("korphan", t.Key);                 // orphan's identity/history survives
@@ -65,7 +67,8 @@ public class TabReconcilerScanTests
         var stored = new List<TabSnapshot> { a, b };
 
         // Scanning a third differently-named tab with the same fingerprint must NOT merge into a or b.
-        TabReconciler.RecordScan(stored, ScanInput("EmptyC", 2, Content("Chaos", 1)), Keys("id:c"));
+        TabReconciler.RecordScan(stored, ScanInput("EmptyC", 2, Content("Chaos", 1)), Keys("id:c"),
+            new HashSet<string> { "EmptyC" });
 
         Assert.Equal(3, stored.Count);
         Assert.Contains(stored, t => t.Key == "id:c" && t.Name == "EmptyC");
@@ -78,7 +81,8 @@ public class TabReconcilerScanTests
                                          Fingerprint = TabFingerprint.Compute(Content("Divine Orb", 2)) };
         var stored = new List<TabSnapshot> { existing };
 
-        TabReconciler.RecordScan(stored, ScanInput("Loot", 0, Content("Divine Orb", 5)), Keys());
+        TabReconciler.RecordScan(stored, ScanInput("Loot", 0, Content("Divine Orb", 5)), Keys(),
+            new HashSet<string> { "Loot" });
 
         var t = Assert.Single(stored);
         Assert.Equal("k1", t.Key);
@@ -90,7 +94,8 @@ public class TabReconcilerScanTests
     public void Unknown_tab_with_no_match_is_created()
     {
         var stored = new List<TabSnapshot>();
-        TabReconciler.RecordScan(stored, ScanInput("Solo", 1, Content("Exalted Orb", 4)), Keys("id:new"));
+        TabReconciler.RecordScan(stored, ScanInput("Solo", 1, Content("Exalted Orb", 4)), Keys("id:new"),
+            new HashSet<string> { "Solo" });
         var t = Assert.Single(stored);
         Assert.Equal("id:new", t.Key);
         Assert.True(t.Scanned);
@@ -107,10 +112,29 @@ public class TabReconcilerScanTests
         var dump     = new TabSnapshot { Key = "kdump", Name = "Dump",     Scanned = true, Fingerprint = fp, Items = Content("Same", 1) };
         var stored = new List<TabSnapshot> { currency, dump };
 
-        TabReconciler.RecordScan(stored, ScanInput("Currency", 0, Content("Same", 1)), Keys());
+        TabReconciler.RecordScan(stored, ScanInput("Currency", 0, Content("Same", 1)), Keys(),
+            new HashSet<string> { "Currency", "Dump" });
 
         Assert.Equal(2, stored.Count);
         Assert.Contains(stored, t => t.Key == "kcur" && t.Name == "Currency");
         Assert.Contains(stored, t => t.Key == "kdump" && t.Name == "Dump");
+    }
+
+    [Fact]
+    public void First_scan_of_distinct_live_tab_does_not_reunite()
+    {
+        // Two distinct tabs, both in the live roster, with identical content. Scanning the second
+        // (a placeholder) must NOT reunite onto the first scanned tab — they must stay separate.
+        var fp = TabFingerprint.Compute(Content("Same", 1));
+        var a = new TabSnapshot { Key = "ka", Name = "A", Scanned = true, Fingerprint = fp, Items = Content("Same", 1) };
+        var bPlaceholder = new TabSnapshot { Key = "kb", Name = "B", Scanned = false, Items = new List<ItemSnapshot>() };
+        var stored = new List<TabSnapshot> { a, bPlaceholder };
+
+        TabReconciler.RecordScan(stored, ScanInput("B", 1, Content("Same", 1)), Keys(),
+            new HashSet<string> { "A", "B" });   // both A and B are live
+
+        Assert.Equal(2, stored.Count);
+        Assert.Contains(stored, t => t.Key == "ka" && t.Name == "A");
+        Assert.Contains(stored, t => t.Key == "kb" && t.Name == "B" && t.Scanned);
     }
 }

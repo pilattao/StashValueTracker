@@ -121,9 +121,11 @@ public static partial class TabReconciler
     }
 
     /// <summary>Write a freshly-scanned tab's contents into the right stored tab. Fingerprint reunion
-    /// (name changed, unique content match) takes precedence over an empty same-name placeholder, which
-    /// is then discarded. Falls back to name match, else creates a new tab.</summary>
-    public static void RecordScan(List<TabSnapshot> stored, TabSnapshot scanned, Func<string> newKey)
+    /// (name changed, unique content match) fires only for an orphan whose name is genuinely gone from
+    /// the live roster — otherwise two distinct live tabs with identical content (e.g. two empty tabs)
+    /// would collapse. A scanned name-owner short-circuits to a plain rescan. Falls back to the
+    /// placeholder, else creates a new tab.</summary>
+    public static void RecordScan(List<TabSnapshot> stored, TabSnapshot scanned, Func<string> newKey, ISet<string> liveNames)
     {
         if (stored == null || scanned == null) return;
         var fp = TabFingerprint.Compute(scanned.Items);
@@ -133,20 +135,28 @@ public static partial class TabReconciler
 
         if (nameMatch != null && nameMatch.Scanned)
         {
-            // A scanned tab already owns this name → normal rescan. Never reunite, so an unrelated
-            // tab that merely shares this content's fingerprint can never be hijacked.
+            // A scanned tab already owns this name → normal rescan; never reunite/hijack.
             target = nameMatch;
         }
         else
         {
-            // Reunion: a scanned orphan (different name) whose content uniquely matches — covers a
-            // simultaneous rename+move+recolour. Only fires when no scanned tab owns this name.
-            var reunions = stored
-                .Where(t => t.Scanned && t.Fingerprint == fp && !NameEq(t.Name, scanned.Name))
-                .ToList();
-            if (reunions.Count == 1)
+            // Reunion only with a unique scanned orphan whose name is genuinely gone from the live
+            // roster (a real rename-away). Without liveNames we cannot tell a rename from a distinct
+            // identical-content tab, so we do not reunite.
+            TabSnapshot? reunion = null;
+            if (liveNames != null && liveNames.Count > 0)
             {
-                target = reunions[0];
+                var cands = stored
+                    .Where(t => t.Scanned && t.Fingerprint == fp
+                                && !NameEq(t.Name, scanned.Name)
+                                && !liveNames.Contains(t.Name))
+                    .ToList();
+                if (cands.Count == 1) reunion = cands[0];
+            }
+
+            if (reunion != null)
+            {
+                target = reunion;
                 if (nameMatch != null) stored.Remove(nameMatch);   // drop the empty placeholder
             }
             else if (nameMatch != null)

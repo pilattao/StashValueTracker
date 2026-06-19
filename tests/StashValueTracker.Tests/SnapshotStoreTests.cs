@@ -96,7 +96,7 @@ public class SnapshotStoreTests
         {
             Name = "Maps", Type = "Quad", VisibleIndex = 1,
             Items = new System.Collections.Generic.List<ItemSnapshot> { new() { GroupKey = "Y", StackSize = 3, TotalValueEx = 9 } },
-        });
+        }, new[] { "Maps" });
         var t = Assert.Single(store.Tabs);
         Assert.True(t.Scanned);
         Assert.Equal(3, Assert.Single(t.Items).StackSize);

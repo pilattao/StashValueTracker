@@ -70,9 +70,13 @@ public sealed class SnapshotStore
     public bool SyncRoster(IReadOnlyList<TabRosterEntry> roster, bool rosterStable) =>
         TabReconciler.ApplyRoster(_current.Tabs, roster, rosterStable, NewKey);
 
-    /// <summary>Integrate a freshly-scanned tab (resolves identity, reunites renamed tabs).</summary>
-    public void RecordScan(TabSnapshot scanned) =>
-        TabReconciler.RecordScan(_current.Tabs, scanned, NewKey);
+    /// <summary>Integrate a freshly-scanned tab. <paramref name="liveTabNames"/> are the names in the
+    /// current stash roster; reunion of a renamed tab only fires against names absent from it.</summary>
+    public void RecordScan(TabSnapshot scanned, IReadOnlyCollection<string> liveTabNames)
+    {
+        var live = new HashSet<string>(liveTabNames ?? System.Array.Empty<string>(), System.StringComparer.OrdinalIgnoreCase);
+        TabReconciler.RecordScan(_current.Tabs, scanned, NewKey, live);
+    }
 
     /// <summary>Forget: clear a tab's scanned content but keep the row (the roster still lists it).</summary>
     public void ResetTab(string key)

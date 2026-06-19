@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using ExileCore2;
 using StashValueTracker.Pricing;
 using StashValueTracker.Scanning;
@@ -115,7 +116,7 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
             if (snapshots.Count > 0)
             {
                 foreach (var snapshot in snapshots)
-                    _store.RecordScan(snapshot);
+                    _store.RecordScan(snapshot, roster.Select(r => r.Name).ToList());
                 _dirty = true;
             }
             _lastScanMs = nowMs;

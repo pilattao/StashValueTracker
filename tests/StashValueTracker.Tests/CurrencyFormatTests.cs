@@ -6,7 +6,9 @@ namespace StashValueTracker.Tests;
 public class CurrencyFormatTests
 {
     [Theory]
-    [InlineData(1240, "1240")]
+    [InlineData(1240, "1 240")]
+    [InlineData(50000, "50 000")]
+    [InlineData(1135, "1 135")]
     [InlineData(100, "100")]
     [InlineData(42, "42")]
     [InlineData(8.68, "8.7")]
@@ -23,7 +25,7 @@ public class CurrencyFormatTests
     [Fact]
     public void ExWithDiv_appends_divine_suffix()
     {
-        Assert.Equal("1240 ex (~8.7 div)", CurrencyFormat.ExWithDiv(1240, 0.007));
+        Assert.Equal("1 240 ex (~8.7 div)", CurrencyFormat.ExWithDiv(1240, 0.007));
         Assert.Equal("900 ex (~6.3 div)", CurrencyFormat.ExWithDiv(900, 0.007));
     }
 

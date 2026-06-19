@@ -81,7 +81,8 @@ public class TabReconcilerApplyTests
     public void Deleted_tab_kept_when_unstable()
     {
         var stored = new List<TabSnapshot> { Scanned("k1", "Gone") };
-        TabReconciler.ApplyRoster(stored, new TabRosterEntry[0], rosterStable: false, newKey: Keys());
+        var changed = TabReconciler.ApplyRoster(stored, new TabRosterEntry[0], rosterStable: false, newKey: Keys());
+        Assert.False(changed);
         Assert.Single(stored);
     }
 
@@ -90,8 +91,9 @@ public class TabReconcilerApplyTests
     {
         // triple-change reunion window: a New tab is present, so the orphan is retained
         var stored = new List<TabSnapshot> { Scanned("k1", "Orphan", color: 1, type: "Normal", idx: 1) };
-        TabReconciler.ApplyRoster(stored, new[] { Live("BrandNew", color: 9, type: "Map", idx: 8) },
+        var changed = TabReconciler.ApplyRoster(stored, new[] { Live("BrandNew", color: 9, type: "Map", idx: 8) },
             rosterStable: true, newKey: Keys("id:new"));
+        Assert.True(changed);
         Assert.Contains(stored, t => t.Key == "k1");      // orphan kept
         Assert.Contains(stored, t => t.Key == "id:new");  // placeholder added
     }

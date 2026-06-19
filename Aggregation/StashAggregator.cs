@@ -25,11 +25,13 @@ public sealed class AggregationResult
     public IReadOnlyList<AggregatedRow> Rows { get; init; } = Array.Empty<AggregatedRow>();
     public double GrandTotalEx { get; init; }
     public int UnpricedCount { get; init; }
+    public int HiddenCount { get; init; }
 }
 
 public static class StashAggregator
 {
-    public static AggregationResult Aggregate(IEnumerable<TabSnapshot> tabs, ISet<string> includeKeys)
+    public static AggregationResult Aggregate(IEnumerable<TabSnapshot> tabs, ISet<string> includeKeys,
+                                              double minTotalEx = 0, double minUnitEx = 0)
     {
         var included = (tabs ?? Enumerable.Empty<TabSnapshot>())
             .Where(t => t != null && includeKeys != null && includeKeys.Contains(t.Key))
@@ -58,7 +60,18 @@ public static class StashAggregator
             }
         }
 
-        var rows = groups.Values
+        var hidden = 0;
+        var kept = new List<GroupAccum>();
+        foreach (var g in groups.Values)
+        {
+            var unit = g.Quantity > 0 ? g.TotalEx / g.Quantity : 0;
+            var passTotal = minTotalEx <= 0 || g.TotalEx >= minTotalEx;
+            var passUnit = minUnitEx <= 0 || unit >= minUnitEx;
+            if (passTotal && passUnit) kept.Add(g);
+            else hidden++;
+        }
+
+        var rows = kept
             .Select(g => new AggregatedRow
             {
                 DisplayName = g.DisplayName,
@@ -75,6 +88,7 @@ public static class StashAggregator
             Rows = rows,
             GrandTotalEx = rows.Sum(r => r.TotalEx),
             UnpricedCount = unpriced,
+            HiddenCount = hidden,
         };
     }
 

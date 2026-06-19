@@ -57,7 +57,7 @@ public sealed class ValueWindow
             DrawThresholds(result.HiddenCount);
             ImGui.Separator();
 
-            DrawTabFilterPanel(store, tabs, divinePerExalted, requestSave, _settings.TabPanelWidth.Value);
+            DrawTabFilterPanel(store, tabs, result, divinePerExalted, requestSave, _settings.TabPanelWidth.Value);
             ImGui.SameLine();
             DrawSplitter();
             ImGui.SameLine();
@@ -110,19 +110,21 @@ public sealed class ValueWindow
             _settings.TabPanelWidth.Value = Math.Clamp(_settings.TabPanelWidth.Value + ImGui.GetIO().MouseDelta.X, 140f, 600f);
     }
 
-    private void DrawTabFilterPanel(SnapshotStore store, IReadOnlyList<TabSnapshot> tabs, double divinePerExalted, Action requestSave, float panelWidth)
+    private void DrawTabFilterPanel(SnapshotStore store, IReadOnlyList<TabSnapshot> tabs,
+        AggregationResult result, double divinePerExalted, Action requestSave, float panelWidth)
     {
         ImGui.BeginChild("tabs", new Vector2(panelWidth, 0), ImGuiChildFlags.Border);
         ImGui.TextDisabled("Tabs");
         ImGui.Separator();
 
         foreach (var tab in tabs.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
-            DrawTabRow(store, tab, divinePerExalted, requestSave);
+            DrawTabRow(store, tab, result, divinePerExalted, requestSave);
 
         ImGui.EndChild();
     }
 
-    private void DrawTabRow(SnapshotStore store, TabSnapshot tab, double divinePerExalted, Action requestSave)
+    private void DrawTabRow(SnapshotStore store, TabSnapshot tab, AggregationResult result,
+        double divinePerExalted, Action requestSave)
     {
         ImGui.PushID(tab.Key);
 
@@ -130,8 +132,23 @@ public sealed class ValueWindow
         if (ImGui.Checkbox($"{tab.Name}##sel", ref included))
             SetExcluded(tab.Key, !included);
 
-        var tabTotal = tab.Items.Where(i => i.TotalValueEx > 0).Sum(i => i.TotalValueEx);
-        ImGui.TextDisabled($"  {CurrencyFormat.ExWithDiv(tabTotal, divinePerExalted)} · {Ago(tab.LastScannedUtc)}");
+        double tabTotal;
+        string pct;
+        if (included)
+        {
+            tabTotal = result.TabTotalsEx.TryGetValue(tab.Key, out var ft) ? ft : 0;
+            pct = result.GrandTotalEx > 0
+                ? $" · {Math.Round(tabTotal / result.GrandTotalEx * 100)}%"
+                : " · —";
+        }
+        else
+        {
+            // Excluded tabs aren't aggregated: show their raw (unfiltered) worth, no percent.
+            tabTotal = tab.Items.Where(i => i.TotalValueEx > 0).Sum(i => i.TotalValueEx);
+            pct = "";
+        }
+
+        ImGui.TextDisabled($"  {CurrencyFormat.ExWithDiv(tabTotal, divinePerExalted)}{pct} · {Ago(tab.LastScannedUtc)}");
 
         if (RightSmallButton("Forget"))
         {

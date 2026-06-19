@@ -151,7 +151,12 @@ public sealed class ValueWindow
             pct = "";
         }
 
-        ImGui.TextDisabled($"  {CurrencyFormat.Auto(tabTotal, divinePerExalted)}{pct} · {Ago(tab.LastScannedUtc)}");
+        // TextUnformatted, not TextDisabled: the latter treats its argument as a printf format
+        // string, so the literal '%' in the contribution percentage would be swallowed. We push the
+        // disabled colour manually to keep the muted look without the format processing.
+        ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled]);
+        ImGui.TextUnformatted($"  {CurrencyFormat.Auto(tabTotal, divinePerExalted)}{pct} · {Ago(tab.LastScannedUtc)}");
+        ImGui.PopStyleColor();
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(CurrencyFormat.Tooltip(tabTotal, divinePerExalted));
 
@@ -196,8 +201,14 @@ public sealed class ValueWindow
 
                 ImGui.TableNextColumn();
                 ImGui.TextUnformatted(row.TabLabel);
+                // BeginTooltip + TextUnformatted (not SetTooltip): tab names are player-controlled and
+                // may contain '%', which SetTooltip would interpret as a printf format specifier.
                 if (row.TabNames.Count > 1 && ImGui.IsItemHovered())
-                    ImGui.SetTooltip(string.Join("\n", row.TabNames));
+                {
+                    ImGui.BeginTooltip();
+                    ImGui.TextUnformatted(string.Join("\n", row.TabNames));
+                    ImGui.EndTooltip();
+                }
 
                 ImGui.TableNextColumn();
                 ImGui.TextUnformatted(row.Quantity.ToString());

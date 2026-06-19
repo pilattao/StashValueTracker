@@ -40,4 +40,26 @@ public class CurrencyFormatTests
     {
         Assert.Equal("42 ex", CurrencyFormat.ExWithDiv(42, 0));
     }
+
+    [Theory]
+    [InlineData(200, 0.01, "2 div")]     // 2.0 divine → divine
+    [InlineData(50, 0.01, "50 ex")]      // 0.5 divine → exalted
+    [InlineData(142, 0.007, "142 ex")]   // 0.994 divine → exalted
+    [InlineData(100, 0, "100 ex")]       // unknown rate → exalted
+    public void Auto_uses_divine_only_when_at_least_one(double ex, double ratio, string expected)
+    {
+        Assert.Equal(expected, CurrencyFormat.Auto(ex, ratio));
+    }
+
+    [Fact]
+    public void Tooltip_shows_both_denominations()
+    {
+        Assert.Equal("2 div · 200 ex", CurrencyFormat.Tooltip(200, 0.01));
+    }
+
+    [Fact]
+    public void Tooltip_is_exalted_only_when_rate_unknown()
+    {
+        Assert.Equal("100 ex", CurrencyFormat.Tooltip(100, 0));
+    }
 }

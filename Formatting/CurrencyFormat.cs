@@ -24,4 +24,23 @@ public static class CurrencyFormat
         var div = exalted * divinePerExalted;
         return $"{ex} ex (~{FormatNumber(div)} div)";
     }
+
+    /// <summary>Inline value in the largest readable unit: divine when ≥ 1 div, else exalted.</summary>
+    public static string Auto(double exalted, double divinePerExalted)
+    {
+        if (divinePerExalted > 0)
+        {
+            var div = exalted * divinePerExalted;
+            if (div >= 1) return FormatNumber(div) + " div";
+        }
+        return FormatNumber(exalted) + " ex";
+    }
+
+    /// <summary>Both denominations for a hover tooltip: "<n> div · <n> ex" (ex-only if rate unknown).</summary>
+    public static string Tooltip(double exalted, double divinePerExalted)
+    {
+        if (divinePerExalted > 0)
+            return $"{FormatNumber(exalted * divinePerExalted)} div · {FormatNumber(exalted)} ex";
+        return FormatNumber(exalted) + " ex";
+    }
 }

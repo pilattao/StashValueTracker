@@ -28,6 +28,14 @@ public static class CurrencyFormat
         return FormatNumber(exalted) + " ex";
     }
 
+    /// <summary>Current divine↔exalted rate as "1 div = N ex"; empty when unknown.</summary>
+    public static string DivineRate(double divinePerExalted)
+    {
+        if (divinePerExalted <= 0) return "";
+        var exPerDiv = 1.0 / divinePerExalted;
+        return $"1 div = {FormatNumber(System.Math.Round(exPerDiv))} ex";
+    }
+
     /// <summary>Both denominations for a hover tooltip: "<n> div · <n> ex" (ex-only if rate unknown).</summary>
     public static string Tooltip(double exalted, double divinePerExalted)
     {

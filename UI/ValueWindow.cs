@@ -57,6 +57,12 @@ public sealed class ValueWindow
                 ImGui.SetTooltip(CurrencyFormat.Tooltip(result.GrandTotalEx, divinePerExalted));
             ImGui.SameLine();
             ImGui.TextDisabled($"   |   {result.UnpricedCount} items unpriced");
+            var rate = CurrencyFormat.DivineRate(divinePerExalted);
+            if (rate.Length > 0)
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(new Vector4(0.85f, 0.70f, 0.36f, 1f), $"   |   {rate}");
+            }
             DrawThresholds(result.HiddenCount);
             ImGui.Separator();
 
@@ -120,7 +126,7 @@ public sealed class ValueWindow
         ImGui.TextDisabled("Tabs");
         ImGui.Separator();
 
-        foreach (var tab in tabs.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
+        foreach (var tab in tabs.OrderBy(t => t.VisibleIndex).ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
             DrawTabRow(store, tab, result, divinePerExalted, requestSave);
 
         ImGui.EndChild();
@@ -131,43 +137,78 @@ public sealed class ValueWindow
     {
         ImGui.PushID(tab.Key);
 
+        var drawList = ImGui.GetWindowDrawList();
+        var pad = new Vector2(4, 3);
+        var start = ImGui.GetCursorScreenPos();
+
+        ImGui.Dummy(new Vector2(0, pad.Y));          // top inner padding
+        ImGui.Indent(pad.X);
+        ImGui.BeginGroup();
+
         var included = !_excluded.Contains(tab.Key);
         if (ImGui.Checkbox($"{tab.Name}##sel", ref included))
             SetExcluded(tab.Key, !included);
 
-        double tabTotal;
-        string pct;
-        if (included)
+        if (tab.Scanned)
         {
-            tabTotal = result.TabTotalsEx.TryGetValue(tab.Key, out var ft) ? ft : 0;
-            pct = result.GrandTotalEx > 0
-                ? $" · {Math.Round(tabTotal / result.GrandTotalEx * 100)}%"
-                : " · —";
+            double tabTotal;
+            string pct;
+            if (included)
+            {
+                tabTotal = result.TabTotalsEx.TryGetValue(tab.Key, out var ft) ? ft : 0;
+                pct = result.GrandTotalEx > 0
+                    ? $" · {Math.Round(tabTotal / result.GrandTotalEx * 100)}%"
+                    : " · —";
+            }
+            else
+            {
+                tabTotal = tab.Items.Where(i => i.TotalValueEx > 0).Sum(i => i.TotalValueEx);
+                pct = "";
+            }
+
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled]);
+            ImGui.TextUnformatted($"  {CurrencyFormat.Auto(tabTotal, divinePerExalted)}{pct} · {Ago(tab.LastScannedUtc)}");
+            ImGui.PopStyleColor();
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(CurrencyFormat.Tooltip(tabTotal, divinePerExalted));
         }
         else
         {
-            // Excluded tabs aren't aggregated: show their raw (unfiltered) worth, no percent.
-            tabTotal = tab.Items.Where(i => i.TotalValueEx > 0).Sum(i => i.TotalValueEx);
-            pct = "";
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+            ImGui.TextUnformatted("  not scanned");
+            ImGui.PopStyleColor();
         }
-
-        // TextUnformatted, not TextDisabled: the latter treats its argument as a printf format
-        // string, so the literal '%' in the contribution percentage would be swallowed. We push the
-        // disabled colour manually to keep the muted look without the format processing.
-        ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled]);
-        ImGui.TextUnformatted($"  {CurrencyFormat.Auto(tabTotal, divinePerExalted)}{pct} · {Ago(tab.LastScannedUtc)}");
-        ImGui.PopStyleColor();
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(CurrencyFormat.Tooltip(tabTotal, divinePerExalted));
 
         if (RightSmallButton("Forget"))
         {
-            store.ForgetTab(tab.Key);
-            SetExcluded(tab.Key, false);
+            store.ResetTab(tab.Key);
             requestSave();
         }
 
+        ImGui.EndGroup();
+        ImGui.Unindent(pad.X);
+
+        var min = new Vector2(start.X + 1, start.Y);
+        var max = new Vector2(ImGui.GetItemRectMax().X + pad.X, ImGui.GetItemRectMax().Y + pad.Y);
+        var frame = FrameColor(tab);
+        drawList.AddRectFilled(min, max, ImGui.GetColorU32(new Vector4(frame.X, frame.Y, frame.Z, 0.08f)), 3f);
+        drawList.AddRect(min, max, ImGui.GetColorU32(new Vector4(frame.X, frame.Y, frame.Z, 0.85f)), 3f, ImDrawFlags.None, 1.5f);
+
+        ImGui.Dummy(new Vector2(0, pad.Y + 2));      // bottom padding + gap before next card
         ImGui.PopID();
+    }
+
+    // Tab frame colour: the tab's own colour, or a neutral grey when unscanned / unknown.
+    private static Vector4 FrameColor(TabSnapshot tab)
+    {
+        if (!tab.Scanned && tab.ColorArgb == 0) return new Vector4(0.45f, 0.45f, 0.45f, 1f);
+        if (tab.ColorArgb == 0) return new Vector4(0.55f, 0.55f, 0.55f, 1f);
+        var a = (byte)((tab.ColorArgb >> 24) & 0xFF);
+        var r = (byte)((tab.ColorArgb >> 16) & 0xFF);
+        var g = (byte)((tab.ColorArgb >> 8) & 0xFF);
+        var b = (byte)(tab.ColorArgb & 0xFF);
+        if (a == 0) a = 255;
+        return new Vector4(r / 255f, g / 255f, b / 255f, 1f);
     }
 
     private void DrawSummaryTable(AggregationResult result, double divinePerExalted)

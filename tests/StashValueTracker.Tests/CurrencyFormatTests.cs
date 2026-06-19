@@ -43,4 +43,23 @@ public class CurrencyFormatTests
     {
         Assert.Equal("100 ex", CurrencyFormat.Tooltip(100, 0));
     }
+
+    [Fact]
+    public void DivineRate_formats_current_rate()
+    {
+        // 1/198 div per ex → 1 div = 198 ex
+        Assert.Equal("1 div = 198 ex", CurrencyFormat.DivineRate(1.0 / 198.0));
+    }
+
+    [Fact]
+    public void DivineRate_groups_thousands()
+    {
+        Assert.Equal("1 div = 1 200 ex", CurrencyFormat.DivineRate(1.0 / 1200.0));
+    }
+
+    [Fact]
+    public void DivineRate_empty_when_unknown()
+    {
+        Assert.Equal("", CurrencyFormat.DivineRate(0));
+    }
 }

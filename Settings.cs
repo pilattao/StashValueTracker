@@ -27,4 +27,8 @@ public class Settings : ISettings
 
     // Persisted set of tab keys the user has unchecked in the filter. No [Menu] — hidden but saved.
     public List<string> ExcludedTabKeys { get; set; } = new();
+
+    // Persisted filter thresholds in whole exalted (0 = off). No [Menu] — edited in the window.
+    public RangeNode<int> MinTotalEx { get; set; } = new(0, 0, 1_000_000_000);
+    public RangeNode<int> MinUnitEx { get; set; } = new(0, 0, 1_000_000_000);
 }

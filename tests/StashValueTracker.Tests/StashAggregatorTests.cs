@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using StashValueTracker.Aggregation;
 using StashValueTracker.Model;
 using Xunit;
@@ -95,5 +96,63 @@ public class StashAggregatorTests
         Assert.Empty(result.Rows);
         Assert.Equal(0, result.GrandTotalEx);
         Assert.Equal(0, result.UnpricedCount);
+    }
+
+    [Fact]
+    public void MinTotal_hides_cheap_groups()
+    {
+        var tabs = new[] { Tab("k", "A", Item("Cheap", 1, 5), Item("Pricey", 1, 500)) };
+        var r = StashAggregator.Aggregate(tabs, new HashSet<string> { "k" }, minTotalEx: 100);
+        var row = Assert.Single(r.Rows);
+        Assert.Equal("Pricey", row.DisplayName);
+        Assert.Equal(1, r.HiddenCount);
+        Assert.Equal(500, r.GrandTotalEx);
+    }
+
+    [Fact]
+    public void MinUnit_hides_low_unit_price()
+    {
+        // Bulk: unit 50/100 = 0.5 (hidden); Gem: unit 20 (kept)
+        var tabs = new[] { Tab("k", "A", Item("Bulk", 100, 50), Item("Gem", 1, 20)) };
+        var r = StashAggregator.Aggregate(tabs, new HashSet<string> { "k" }, minUnitEx: 1);
+        var row = Assert.Single(r.Rows);
+        Assert.Equal("Gem", row.DisplayName);
+        Assert.Equal(1, r.HiddenCount);
+    }
+
+    [Fact]
+    public void Zero_thresholds_keep_everything()
+    {
+        var tabs = new[] { Tab("k", "A", Item("Cheap", 1, 5)) };
+        var r = StashAggregator.Aggregate(tabs, new HashSet<string> { "k" }, 0, 0);
+        Assert.Single(r.Rows);
+        Assert.Equal(0, r.HiddenCount);
+    }
+
+    [Fact]
+    public void Both_thresholds_apply_as_and()
+    {
+        // total 500 passes total>=100, but unit 0.5 fails unit>=1 → hidden
+        var tabs = new[] { Tab("k", "A", Item("BulkBig", 1000, 500)) };
+        var r = StashAggregator.Aggregate(tabs, new HashSet<string> { "k" }, minTotalEx: 100, minUnitEx: 1);
+        Assert.Empty(r.Rows);
+        Assert.Equal(1, r.HiddenCount);
+    }
+
+    [Fact]
+    public void TabTotals_split_passing_groups_by_tab_key()
+    {
+        var tabs = new[]
+        {
+            Tab("k:cur", "Currency", Item("Divine", 1, 300)),
+            Tab("k:val", "Valuables", Item("Divine", 1, 200), Item("Junk", 1, 5)),
+        };
+        // Divine combined total 500 passes; Junk (5) hidden.
+        var r = StashAggregator.Aggregate(tabs, new HashSet<string> { "k:cur", "k:val" }, minTotalEx: 100);
+
+        Assert.Equal(300, r.TabTotalsEx["k:cur"]);
+        Assert.Equal(200, r.TabTotalsEx["k:val"]);   // Divine's share only; Junk excluded
+        Assert.Equal(500, r.GrandTotalEx);
+        Assert.Equal(r.GrandTotalEx, r.TabTotalsEx.Values.Sum());
     }
 }

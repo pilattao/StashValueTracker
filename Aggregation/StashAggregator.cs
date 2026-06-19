@@ -25,11 +25,14 @@ public sealed class AggregationResult
     public IReadOnlyList<AggregatedRow> Rows { get; init; } = Array.Empty<AggregatedRow>();
     public double GrandTotalEx { get; init; }
     public int UnpricedCount { get; init; }
+    public int HiddenCount { get; init; }
+    public IReadOnlyDictionary<string, double> TabTotalsEx { get; init; } = new Dictionary<string, double>();
 }
 
 public static class StashAggregator
 {
-    public static AggregationResult Aggregate(IEnumerable<TabSnapshot> tabs, ISet<string> includeKeys)
+    public static AggregationResult Aggregate(IEnumerable<TabSnapshot> tabs, ISet<string> includeKeys,
+                                              double minTotalEx = 0, double minUnitEx = 0)
     {
         var included = (tabs ?? Enumerable.Empty<TabSnapshot>())
             .Where(t => t != null && includeKeys != null && includeKeys.Contains(t.Key))
@@ -55,10 +58,28 @@ public static class StashAggregator
                 acc.Quantity += item.StackSize;
                 acc.TotalEx += item.TotalValueEx;
                 if (!acc.TabNames.Contains(tab.Name)) acc.TabNames.Add(tab.Name);
+                acc.PerTab[tab.Key] = acc.PerTab.GetValueOrDefault(tab.Key) + item.TotalValueEx;
             }
         }
 
-        var rows = groups.Values
+        var hidden = 0;
+        var kept = new List<GroupAccum>();
+        var tabTotals = new Dictionary<string, double>();
+        foreach (var g in groups.Values)
+        {
+            var unit = g.Quantity > 0 ? g.TotalEx / g.Quantity : 0;
+            var passTotal = minTotalEx <= 0 || g.TotalEx >= minTotalEx;
+            var passUnit = minUnitEx <= 0 || unit >= minUnitEx;
+            if (passTotal && passUnit)
+            {
+                kept.Add(g);
+                foreach (var kv in g.PerTab)
+                    tabTotals[kv.Key] = tabTotals.GetValueOrDefault(kv.Key) + kv.Value;
+            }
+            else hidden++;
+        }
+
+        var rows = kept
             .Select(g => new AggregatedRow
             {
                 DisplayName = g.DisplayName,
@@ -75,6 +96,8 @@ public static class StashAggregator
             Rows = rows,
             GrandTotalEx = rows.Sum(r => r.TotalEx),
             UnpricedCount = unpriced,
+            HiddenCount = hidden,
+            TabTotalsEx = tabTotals,
         };
     }
 
@@ -85,5 +108,6 @@ public static class StashAggregator
         public int Quantity;
         public double TotalEx;
         public readonly List<string> TabNames = new();
+        public readonly Dictionary<string, double> PerTab = new();   // tab.Key -> contribution
     }
 }

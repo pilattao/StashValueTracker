@@ -41,6 +41,12 @@ public sealed class SnapshotStore
             _current = loaded ?? new StashSnapshot();
             _current.League = league;
             _current.Tabs ??= new List<TabSnapshot>();
+            // Back-fill Scanned for snapshots persisted before the field existed: old-format tabs
+            // were only ever created by scanning, so a stored tab with items or a scan time was
+            // scanned. Genuine new-format placeholders (empty, default time) correctly stay false.
+            foreach (var t in _current.Tabs)
+                if (!t.Scanned && (t.Items is { Count: > 0 } || t.LastScannedUtc != default))
+                    t.Scanned = true;
         }
         catch (Exception ex)
         {

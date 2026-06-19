@@ -68,7 +68,7 @@ public class TabReconcilerMatchTests
     {
         var outcome = TabReconciler.Match(new TabRosterEntry[0], new[] { Stored("k1", "Gone") });
         Assert.Empty(outcome.Matches);
-        Assert.Same("k1", Assert.Single(outcome.Missing).Key);
+        Assert.Equal("k1", Assert.Single(outcome.Missing).Key);
     }
 
     [Fact]

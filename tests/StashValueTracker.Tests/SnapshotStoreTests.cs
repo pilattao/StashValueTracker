@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using StashValueTracker.Model;
@@ -126,6 +127,63 @@ public class SnapshotStoreTests
         var reloaded = new SnapshotStore(dir);
         reloaded.LoadLeague("HC SSF Mercenaries / R2");
         Assert.Single(reloaded.Tabs);
+    }
+
+    [Fact]
+    public void Legacy_tab_with_items_is_backfilled_as_scanned()
+    {
+        // Write old-format JSON (no Scanned field) with Items present — simulates a snapshot
+        // persisted before the Scanned field was introduced.
+        var dir = TempDir();
+        var json = """
+            {
+              "League": "Standard",
+              "Tabs": [
+                {
+                  "Key": "name:Currency",
+                  "Name": "Currency",
+                  "Type": "CurrencyStash",
+                  "TabType": "",
+                  "ColorArgb": 0,
+                  "VisibleIndex": 0,
+                  "Fingerprint": 0,
+                  "LastScannedUtc": "0001-01-01T00:00:00",
+                  "Items": [
+                    { "DisplayName": "Chaos Orb", "GroupKey": "Chaos Orb", "StackSize": 10, "TotalValueEx": 1.0 }
+                  ]
+                }
+              ]
+            }
+            """;
+        File.WriteAllText(Path.Combine(dir, "Standard.json"), json);
+
+        var store = new SnapshotStore(dir);
+        store.LoadLeague("Standard");
+
+        var tab = Assert.Single(store.Tabs);
+        Assert.True(tab.Scanned, "Legacy tab with items must be back-filled as Scanned=true");
+    }
+
+    [Fact]
+    public void New_format_placeholder_stays_not_scanned_after_round_trip()
+    {
+        // A placeholder tab created by SyncRoster has empty Items and default LastScannedUtc;
+        // the back-fill must not promote it to Scanned=true.
+        var dir = TempDir();
+        var store = new SnapshotStore(dir);
+        store.LoadLeague("Standard");
+        store.SyncRoster(
+            new[] { new TabRosterEntry { Name = "Maps", ColorArgb = 0, TabType = "Map", VisibleIndex = 0 } },
+            rosterStable: true);
+        store.Save();
+
+        var reloaded = new SnapshotStore(dir);
+        reloaded.LoadLeague("Standard");
+
+        var tab = Assert.Single(reloaded.Tabs);
+        Assert.False(tab.Scanned, "New-format placeholder must remain Scanned=false after reload");
+        Assert.Empty(tab.Items);
+        Assert.Equal(default(DateTime), tab.LastScannedUtc);
     }
 
     [Fact]

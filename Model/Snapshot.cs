@@ -13,9 +13,14 @@ public sealed class ItemSnapshot
 
 public sealed class TabSnapshot
 {
-    public string Key { get; set; } = "";      // opaque identity from ResolveTabKey
+    public string Key { get; set; } = "";      // opaque identity (GUID for new tabs; legacy name-key preserved)
     public string Name { get; set; } = "";
-    public string Type { get; set; } = "";
+    public string Type { get; set; } = "";      // scan-time inventory type (existing)
+    public string TabType { get; set; } = "";   // roster tab type (for signature matching)
+    public int ColorArgb { get; set; }          // ServerStashTab.Color2.ToArgb()
+    public int VisibleIndex { get; set; }
+    public long Fingerprint { get; set; }
+    public bool Scanned { get; set; }
     public DateTime LastScannedUtc { get; set; }
     public List<ItemSnapshot> Items { get; set; } = new();
 }

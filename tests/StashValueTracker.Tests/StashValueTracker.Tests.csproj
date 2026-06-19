@@ -13,6 +13,7 @@
     <Compile Include="..\..\Formatting\CurrencyFormat.cs" Link="Formatting\CurrencyFormat.cs" />
     <Compile Include="..\..\Aggregation\StashAggregator.cs" Link="Aggregation\StashAggregator.cs" />
     <Compile Include="..\..\Storage\SnapshotStore.cs" Link="Storage\SnapshotStore.cs" />
+    <Compile Include="..\..\Tabs\TabFingerprint.cs" Link="Tabs\TabFingerprint.cs" />
     <Compile Include="*.cs" />
   </ItemGroup>
 

@@ -119,4 +119,53 @@ public static partial class TabReconciler
 
         return changed;
     }
+
+    /// <summary>Write a freshly-scanned tab's contents into the right stored tab. Fingerprint reunion
+    /// (name changed, unique content match) takes precedence over an empty same-name placeholder, which
+    /// is then discarded. Falls back to name match, else creates a new tab.</summary>
+    public static void RecordScan(List<TabSnapshot> stored, TabSnapshot scanned, Func<string> newKey)
+    {
+        if (stored == null || scanned == null) return;
+        var fp = TabFingerprint.Compute(scanned.Items);
+
+        var nameMatch = stored.FirstOrDefault(t => NameEq(t.Name, scanned.Name));
+        TabSnapshot target;
+
+        if (nameMatch != null && nameMatch.Scanned)
+        {
+            // A scanned tab already owns this name → normal rescan. Never reunite, so an unrelated
+            // tab that merely shares this content's fingerprint can never be hijacked.
+            target = nameMatch;
+        }
+        else
+        {
+            // Reunion: a scanned orphan (different name) whose content uniquely matches — covers a
+            // simultaneous rename+move+recolour. Only fires when no scanned tab owns this name.
+            var reunions = stored
+                .Where(t => t.Scanned && t.Fingerprint == fp && !NameEq(t.Name, scanned.Name))
+                .ToList();
+            if (reunions.Count == 1)
+            {
+                target = reunions[0];
+                if (nameMatch != null) stored.Remove(nameMatch);   // drop the empty placeholder
+            }
+            else if (nameMatch != null)
+            {
+                target = nameMatch;                                // unscanned placeholder
+            }
+            else
+            {
+                target = new TabSnapshot { Key = newKey(), ColorArgb = scanned.ColorArgb, TabType = scanned.TabType };
+                stored.Add(target);
+            }
+        }
+
+        target.Name = scanned.Name;
+        target.Type = scanned.Type;
+        target.VisibleIndex = scanned.VisibleIndex;
+        target.Items = scanned.Items ?? new List<ItemSnapshot>();
+        target.Fingerprint = fp;
+        target.Scanned = true;
+        target.LastScannedUtc = scanned.LastScannedUtc;
+    }
 }

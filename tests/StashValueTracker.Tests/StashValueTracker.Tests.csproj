@@ -14,6 +14,8 @@
     <Compile Include="..\..\Aggregation\StashAggregator.cs" Link="Aggregation\StashAggregator.cs" />
     <Compile Include="..\..\Storage\SnapshotStore.cs" Link="Storage\SnapshotStore.cs" />
     <Compile Include="..\..\Tabs\TabFingerprint.cs" Link="Tabs\TabFingerprint.cs" />
+    <Compile Include="..\..\Tabs\TabRosterEntry.cs" Link="Tabs\TabRosterEntry.cs" />
+    <Compile Include="..\..\Tabs\TabReconciler.cs" Link="Tabs\TabReconciler.cs" />
     <Compile Include="*.cs" />
   </ItemGroup>
 

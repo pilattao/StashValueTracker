@@ -20,7 +20,6 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
     private ValueWindow _window = null!;
     private StashRoster _roster = null!;
     private string _lastRosterSig = "";
-    private long _dbgLastMs;   // DEBUG (temporary)
 
     private string _currentLeague = "";
     private bool _leagueLoaded;
@@ -94,29 +93,6 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
 
         var key = _scanner.ResolveTabKey(stash);
         var nowMs = Environment.TickCount64;
-
-        // DEBUG (temporary): every 500ms overwrite a snapshot of raw PlayerStashTabs vs our store.Tabs,
-        // so we can see whether duplicates originate in the game data or in our reconciliation.
-        if (nowMs - _dbgLastMs > 500)
-        {
-            _dbgLastMs = nowMs;
-            try
-            {
-                var lines = new System.Collections.Generic.List<string>
-                {
-                    $"=== {DateTime.Now:HH:mm:ss.fff}  roster.Count={roster.Count}  store.Tabs={_store.Tabs.Count}  openKey={key} ===",
-                    $"StashElement: TotalStashes={stash.TotalStashes} AllStashNames.Count={stash.AllStashNames?.Count} Inventories.Count={stash.Inventories?.Count} IndexVisibleStash={stash.IndexVisibleStash}",
-                };
-                lines.AddRange(_roster.DebugRawLines());
-                lines.Add("store.Tabs:");
-                foreach (var t in _store.Tabs)
-                    lines.Add($"  key={t.Key} name='{t.Name}' idx={t.VisibleIndex} scanned={t.Scanned} color=0x{t.ColorArgb:X8} type={t.TabType}");
-                var dir = Path.Combine(DirectoryFullName, "data");
-                Directory.CreateDirectory(dir);
-                File.WriteAllText(Path.Combine(dir, "_roster_debug.txt"), string.Join("\n", lines));
-            }
-            catch { }
-        }
 
         if (key != _pendingTabKey)
         {

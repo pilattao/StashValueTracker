@@ -16,6 +16,7 @@
     <Compile Include="..\..\Tabs\TabFingerprint.cs" Link="Tabs\TabFingerprint.cs" />
     <Compile Include="..\..\Tabs\TabRosterEntry.cs" Link="Tabs\TabRosterEntry.cs" />
     <Compile Include="..\..\Tabs\TabReconciler.cs" Link="Tabs\TabReconciler.cs" />
+    <Compile Include="..\..\Tabs\TabRosterFilter.cs" Link="Tabs\TabRosterFilter.cs" />
     <Compile Include="*.cs" />
   </ItemGroup>
 

@@ -25,11 +25,11 @@ public sealed class StashRoster
             var tabs = _gc?.IngameState?.ServerData?.PlayerStashTabs;
             if (tabs == null || tabs.Count == 0) return Array.Empty<TabRosterEntry>();
 
-            var result = new List<TabRosterEntry>(tabs.Count);
+            var raw = new List<TabRosterEntry>(tabs.Count);
             foreach (var t in tabs)
             {
                 if (t == null) continue;
-                result.Add(new TabRosterEntry
+                raw.Add(new TabRosterEntry
                 {
                     Name = t.Name ?? "",
                     ColorArgb = t.Color2.ToArgb(),
@@ -37,7 +37,11 @@ public sealed class StashRoster
                     VisibleIndex = t.VisibleIndex,
                 });
             }
-            return result;
+
+            // PlayerStashTabs also carries other players' public tabs (party/trade), which collide on
+            // VisibleIndex or fall outside the own range — keep only the local player's own tabs, using
+            // the stash UI's own-tab count as the authority.
+            return TabRosterFilter.SelectOwn(raw, OwnTabCount());
         }
         catch (Exception ex)
         {
@@ -46,26 +50,22 @@ public sealed class StashRoster
         }
     }
 
-    /// <summary>Cheap signature for stability detection across ticks.</summary>
-    public static string RosterSignature(IReadOnlyList<TabRosterEntry> roster) =>
-        roster == null ? "" : string.Join("|", roster.Select(r => $"{r.Name}:{r.VisibleIndex}:{r.ColorArgb}:{r.TabType}"));
-
-    // DEBUG (temporary): raw dump of PlayerStashTabs including fields TabRosterEntry does not carry.
-    public IReadOnlyList<string> DebugRawLines()
+    /// <summary>Number of tabs the local player owns, from the stash UI (0 if the panel is not loaded).</summary>
+    private int OwnTabCount()
     {
         try
         {
-            var tabs = _gc?.IngameState?.ServerData?.PlayerStashTabs;
-            if (tabs == null) return new[] { "PlayerStashTabs: null" };
-            var lines = new List<string> { $"PlayerStashTabs.Count={tabs.Count}" };
-            for (var i = 0; i < tabs.Count; i++)
-            {
-                var t = tabs[i];
-                if (t == null) { lines.Add($"  [{i}] <null>"); continue; }
-                lines.Add($"  [{i}] name='{t.Name}' nameOld='{t.NameOld}' idx={t.VisibleIndex} color=0x{t.Color2.ToArgb():X8} type={t.TabType} flags={t.Flags} member={t.MemberFlags} officer={t.OfficerFlags}");
-            }
-            return lines;
+            var stash = _gc?.IngameState?.IngameUi?.StashElement;
+            if (stash == null) return 0;
+            var n = stash.AllStashNames?.Count ?? 0;
+            if (n <= 0) n = stash.Inventories?.Count ?? 0;
+            if (n <= 0) n = (int)stash.TotalStashes;
+            return n;
         }
-        catch (Exception ex) { return new[] { "DebugRawLines error: " + ex.Message }; }
+        catch { return 0; }
     }
+
+    /// <summary>Cheap signature for stability detection across ticks.</summary>
+    public static string RosterSignature(IReadOnlyList<TabRosterEntry> roster) =>
+        roster == null ? "" : string.Join("|", roster.Select(r => $"{r.Name}:{r.VisibleIndex}:{r.ColorArgb}:{r.TabType}"));
 }

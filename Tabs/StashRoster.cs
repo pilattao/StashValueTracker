@@ -62,7 +62,7 @@ public sealed class StashRoster
             {
                 var t = tabs[i];
                 if (t == null) { lines.Add($"  [{i}] <null>"); continue; }
-                lines.Add($"  [{i}] name='{t.Name}' idx={t.VisibleIndex} color=0x{t.Color2.ToArgb():X8} type={t.TabType} hidden={t.IsHidden} removeOnly={t.RemoveOnly} flags={t.Flags}");
+                lines.Add($"  [{i}] name='{t.Name}' nameOld='{t.NameOld}' idx={t.VisibleIndex} color=0x{t.Color2.ToArgb():X8} type={t.TabType} flags={t.Flags} member={t.MemberFlags} officer={t.OfficerFlags}");
             }
             return lines;
         }

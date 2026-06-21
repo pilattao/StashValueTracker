@@ -105,6 +105,7 @@ public class StashValueTracker : BaseSettingsPlugin<Settings>
                 var lines = new System.Collections.Generic.List<string>
                 {
                     $"=== {DateTime.Now:HH:mm:ss.fff}  roster.Count={roster.Count}  store.Tabs={_store.Tabs.Count}  openKey={key} ===",
+                    $"StashElement: TotalStashes={stash.TotalStashes} AllStashNames.Count={stash.AllStashNames?.Count} Inventories.Count={stash.Inventories?.Count} IndexVisibleStash={stash.IndexVisibleStash}",
                 };
                 lines.AddRange(_roster.DebugRawLines());
                 lines.Add("store.Tabs:");

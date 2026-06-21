@@ -49,4 +49,23 @@ public sealed class StashRoster
     /// <summary>Cheap signature for stability detection across ticks.</summary>
     public static string RosterSignature(IReadOnlyList<TabRosterEntry> roster) =>
         roster == null ? "" : string.Join("|", roster.Select(r => $"{r.Name}:{r.VisibleIndex}:{r.ColorArgb}:{r.TabType}"));
+
+    // DEBUG (temporary): raw dump of PlayerStashTabs including fields TabRosterEntry does not carry.
+    public IReadOnlyList<string> DebugRawLines()
+    {
+        try
+        {
+            var tabs = _gc?.IngameState?.ServerData?.PlayerStashTabs;
+            if (tabs == null) return new[] { "PlayerStashTabs: null" };
+            var lines = new List<string> { $"PlayerStashTabs.Count={tabs.Count}" };
+            for (var i = 0; i < tabs.Count; i++)
+            {
+                var t = tabs[i];
+                if (t == null) { lines.Add($"  [{i}] <null>"); continue; }
+                lines.Add($"  [{i}] name='{t.Name}' idx={t.VisibleIndex} color=0x{t.Color2.ToArgb():X8} type={t.TabType} hidden={t.IsHidden} removeOnly={t.RemoveOnly} flags={t.Flags}");
+            }
+            return lines;
+        }
+        catch (Exception ex) { return new[] { "DebugRawLines error: " + ex.Message }; }
+    }
 }
